@@ -1,0 +1,40 @@
+<Window x:Class="Snatch.CaptureOverlay"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None" AllowsTransparency="True" ShowInTaskbar="False"
+        Topmost="True" ResizeMode="NoResize" WindowStartupLocation="Manual"
+        Background="#01000000" Cursor="Cross"
+        MouseLeftButtonDown="OnDown" MouseMove="OnMove" MouseLeftButtonUp="OnUp"
+        MouseRightButtonDown="OnCancel" KeyDown="OnKey">
+  <Grid>
+    <Image x:Name="Frozen" Stretch="Fill"/>
+    <Rectangle Fill="#33000000"/>
+    <Canvas x:Name="Root" Background="Transparent">
+        <Rectangle x:Name="Sel" Stroke="#FF3DA9FC" StrokeThickness="1.5"
+                   Fill="#203DA9FC" Visibility="Collapsed"/>
+        <Border x:Name="SizeBadge" Background="#E6101418" CornerRadius="4" Padding="7,3"
+                Visibility="Collapsed">
+            <TextBlock x:Name="SizeLabel" Foreground="#FF9FE0FF" FontSize="12" FontWeight="SemiBold"/>
+        </Border>
+        <!-- 커서 주변 픽셀 확대 돋보기 (모서리 정밀 선택) -->
+        <Border x:Name="Loupe" Visibility="Collapsed" CornerRadius="6" Padding="4"
+                Background="#E6101418" BorderBrush="#FF3DA9FC" BorderThickness="1.5">
+            <StackPanel>
+                <Border Width="128" Height="128" ClipToBounds="True" CornerRadius="3">
+                    <Grid>
+                        <Image x:Name="LoupeImg" Stretch="Fill"
+                               RenderOptions.BitmapScalingMode="NearestNeighbor"
+                               SnapsToDevicePixels="True"/>
+                        <Rectangle Width="1" Height="128" Fill="#803DA9FC" HorizontalAlignment="Center"/>
+                        <Rectangle Height="1" Width="128" Fill="#803DA9FC" VerticalAlignment="Center"/>
+                        <Rectangle Width="8" Height="8" Stroke="#FFFFD54A" StrokeThickness="1"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Grid>
+                </Border>
+                <TextBlock x:Name="LoupeInfo" Foreground="#FF9FE0FF" FontSize="11"
+                           FontFamily="Consolas" Margin="0,3,0,0" HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+    </Canvas>
+  </Grid>
+</Window>

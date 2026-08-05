@@ -1,0 +1,29 @@
+<Window x:Class="Snatch.HistoryWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="클립보드 히스토리" Width="420" Height="560"
+        WindowStartupLocation="CenterScreen" Background="#FF1E1E24"
+        ResizeMode="CanResize" ShowInTaskbar="False" Topmost="True"
+        KeyDown="OnKey">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBox x:Name="SearchBox" Grid.Row="0" Padding="6,4" FontSize="13"
+                 Background="#FF15151A" Foreground="White" BorderBrush="#33FF33"
+                 BorderThickness="1" TextChanged="OnSearchChanged"/>
+
+        <ScrollViewer Grid.Row="1" Margin="0,8,0,0" VerticalScrollBarVisibility="Auto">
+            <StackPanel x:Name="Rows"/>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+            <TextBlock x:Name="CountText" Foreground="#AAB0B8" FontSize="11"
+                       VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <Button Content="전체 삭제" Click="OnClearAll" Padding="10,4"/>
+        </StackPanel>
+    </Grid>
+</Window>
