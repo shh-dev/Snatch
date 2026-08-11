@@ -1,0 +1,61 @@
+<Window x:Class="Snatch.AnnotationWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="캡처 편집" Background="#FF15151A" WindowStyle="None"
+        WindowStartupLocation="CenterScreen" ResizeMode="NoResize"
+        SizeToContent="WidthAndHeight" KeyDown="OnKey">
+    <Window.Resources>
+        <Style x:Key="TbBtn" TargetType="Button">
+            <Setter Property="Background" Value="#2A2A33"/>
+            <Setter Property="Foreground" Value="#E8E8EC"/>
+            <Setter Property="Padding" Value="11,6"/>
+            <Setter Property="Margin" Value="0,0,4,0"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#3A3A46"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#4A4A58"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+    <Border BorderBrush="#33FF33" BorderThickness="1">
+    <DockPanel>
+        <Border DockPanel.Dock="Top" Background="#FF1E1E24" Padding="8,7" MouseLeftButtonDown="OnTitleDrag">
+            <StackPanel Orientation="Horizontal">
+                <Button x:Name="BtnSpot"  Content="🔦 스포트라이트" Style="{StaticResource TbBtn}" Click="OnTool" Tag="spot"/>
+                <Button x:Name="BtnArrow" Content="↗ 화살표"        Style="{StaticResource TbBtn}" Click="OnTool" Tag="arrow"/>
+                <Button x:Name="BtnRect"  Content="▭ 사각형"        Style="{StaticResource TbBtn}" Click="OnTool" Tag="rect"/>
+                <Button x:Name="BtnEll"   Content="◯ 원"           Style="{StaticResource TbBtn}" Click="OnTool" Tag="ellipse"/>
+                <Button x:Name="BtnNum"   Content="① 넘버"          Style="{StaticResource TbBtn}" Click="OnTool" Tag="num"/>
+                <Border Width="1" Background="#33FFFFFF" Margin="6,3"/>
+                <Button Content="↶" ToolTip="실행취소 (Ctrl+Z)" Style="{StaticResource TbBtn}" Click="OnUndo"/>
+                <Button Content="⧉" ToolTip="복사 (Ctrl+C)"    Style="{StaticResource TbBtn}" Click="OnCopy"/>
+                <Button Content="💾" ToolTip="저장 (Ctrl+S)"   Style="{StaticResource TbBtn}" Click="OnSave"/>
+                <Button Content="✕" ToolTip="닫기 (Esc)"       Style="{StaticResource TbBtn}" Click="OnClose"/>
+            </StackPanel>
+        </Border>
+        <Border Padding="10" Background="#FF15151A">
+            <Canvas x:Name="Surface" Background="Transparent"
+                    MouseLeftButtonDown="OnDown" MouseMove="OnMove" MouseLeftButtonUp="OnUp"
+                    ClipToBounds="True">
+                <Image x:Name="BaseImage" SnapsToDevicePixels="True"/>
+            </Canvas>
+        </Border>
+    </DockPanel>
+    </Border>
+</Window>

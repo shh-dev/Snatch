@@ -53,7 +53,16 @@ public partial class App : Application
         if (_hotkeys == null) return; // shares the hidden host window's handle
         _clip = new ClipboardWatcher(_hotkeys.Handle);
         _clip.Changed += OnClipboardChanged;
-        // Ctrl+V 감지는 QueueStrip 자체 타이머에서 처리 (GetAsyncKeyState)
+        // Ctrl+V·E 감지는 QueueStrip 자체 타이머에서 처리 (GetAsyncKeyState)
+    }
+
+    private void EditLast()
+    {
+        var path = _lastShotPath;
+        if (path == null || !System.IO.File.Exists(path)) return;
+        _queueStrip?.CloseStrip(); _queueStrip = null;   // 편집기 열면 칩 치움
+        try { var w = new AnnotationWindow(path, _settings); w.Show(); w.Activate(); }
+        catch (Exception ex) { Debug.WriteLine(ex); }
     }
 
     private readonly HashSet<string> _ytDone = new();   // 세션 내 이미 받은 URL
@@ -150,6 +159,7 @@ public partial class App : Application
                 strip.ShowChips = _settings.ShowChips;
                 strip.ShowPreview = _settings.ShowPreview;
                 strip.NoTimeout = _settings.KeepUntilPaste;
+                strip.OnEdit = () => Dispatcher.Invoke(EditLast);
                 strip.SetItems(_queue.ToList());
                 strip.Show();
             }
@@ -158,6 +168,7 @@ public partial class App : Application
                 _queueStrip.ShowChips = _settings.ShowChips;
                 _queueStrip.ShowPreview = _settings.ShowPreview;
                 _queueStrip.NoTimeout = _settings.KeepUntilPaste;
+                _queueStrip.OnEdit = () => Dispatcher.Invoke(EditLast);
                 _queueStrip.SetItems(_queue.ToList());
             }
         }
@@ -394,9 +405,12 @@ public partial class App : Application
         finally { _capturing = false; }
     }
 
+    private string? _lastShotPath;   // 마지막 캡처 스크린샷 (편집용)
+
     private void SaveAndNotify(string? path)
     {
         if (path == null) return;
+        _lastShotPath = path;
 
         if (_settings.CopyToClipboard)
         {
@@ -444,6 +458,7 @@ public partial class App : Application
         menu.Items.Add($"영역 캡처  ({_regionHk})", null, (_, _) => Dispatcher.Invoke(CaptureRegion));
         menu.Items.Add($"전체 캡처  ({_fullHk})", null, (_, _) => Dispatcher.Invoke(CaptureFull));
         menu.Items.Add($"클립보드 히스토리  ({_histHk})", null, (_, _) => Dispatcher.Invoke(ToggleHistory));
+        menu.Items.Add("마지막 캡처 편집", null, (_, _) => Dispatcher.Invoke(EditLast));
         menu.Items.Add("큐 비우기", null, (_, _) => Dispatcher.Invoke(ClearQueue));
         menu.Items.Add(new WinForms.ToolStripSeparator());
         var chipItem = new WinForms.ToolStripMenuItem("미니 썸네일") { Checked = _settings.ShowChips, CheckOnClick = true };

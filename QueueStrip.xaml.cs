@@ -24,7 +24,11 @@ public partial class QueueStrip : Window
     private static readonly IntPtr HWND_TOPMOST = new(-1);
     private const uint SWP_NOSIZE = 0x1, SWP_NOACTIVATE = 0x10, SWP_NOZORDER = 0x4;
     private const int Tile = 30;   // chip size — small like a color chip
-    private const int VK_CONTROL = 0x11, VK_V = 0x56;
+    private const int VK_CONTROL = 0x11, VK_V = 0x56, VK_E = 0x45;
+    private bool _eDown;
+
+    /// <summary>E 키(칩 떠있을 때) → 편집 열기.</summary>
+    public Action? OnEdit { get; set; }
 
     private readonly DispatcherTimer _follow;
     private readonly DispatcherTimer _previewTimer;   // auto-hides the newest-item preview box (short)
@@ -205,12 +209,16 @@ public partial class QueueStrip : Window
 
     private void OnTick()
     {
+        bool ctrl = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
+
         // 붙여넣기(Ctrl+V) 하면 사라짐
-        if ((GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0 && (GetAsyncKeyState(VK_V) & 0x8000) != 0)
-        {
-            CloseStrip();
-            return;
-        }
+        if (ctrl && (GetAsyncKeyState(VK_V) & 0x8000) != 0) { CloseStrip(); return; }
+
+        // E (단독) → 편집 열기
+        bool e = (GetAsyncKeyState(VK_E) & 0x8000) != 0;
+        if (e && !_eDown && !ctrl) { _eDown = true; OnEdit?.Invoke(); return; }
+        if (!e) _eDown = false;
+
         MoveToCursor();
     }
 
