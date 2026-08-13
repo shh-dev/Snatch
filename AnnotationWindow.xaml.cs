@@ -27,6 +27,8 @@ public partial class AnnotationWindow : Window
     private Shape? _live;              // shape being dragged
     private ShapePath? _spotlight;         // single dim overlay, multiple bright holes
     private readonly List<Rect> _holes = new();
+    private int _dimTransPct = 15;         // 딤 투명도 % (휠 5%단위, 10~100)
+    private byte DimAlpha => (byte)Math.Round(255 * (100 - _dimTransPct) / 100.0);
     private int _num;                  // number badge counter
     private readonly List<UIElement> _added = new();   // for undo (excludes base image)
 
@@ -75,6 +77,25 @@ public partial class AnnotationWindow : Window
         var normal = new SolidColorBrush(Color.FromRgb(0x2A, 0x2A, 0x33));
         foreach (var (btn, tag) in new[] { (BtnSpot, "spot"), (BtnArrow, "arrow"), (BtnRect, "rect"), (BtnEll, "ellipse"), (BtnNum, "num") })
             btn.Background = tag == t ? active : normal;
+    }
+
+    private void OnWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+    {
+        if (_spotlight == null) return;   // 스포트라이트 있을 때만 딤 조절
+        _dimTransPct = Math.Clamp(_dimTransPct + (e.Delta > 0 ? 5 : -5), 10, 100);
+        _spotlight.Fill = new SolidColorBrush(Color.FromArgb(DimAlpha, 0, 0, 0));
+        ShowDimToast();
+        e.Handled = true;
+    }
+
+    private void ShowDimToast()
+    {
+        DimToastText.Text = $"투명도 {_dimTransPct}%";
+        var kf = new System.Windows.Media.Animation.DoubleAnimationUsingKeyFrames();
+        kf.KeyFrames.Add(new System.Windows.Media.Animation.LinearDoubleKeyFrame(1, System.Windows.Media.Animation.KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(80))));
+        kf.KeyFrames.Add(new System.Windows.Media.Animation.LinearDoubleKeyFrame(1, System.Windows.Media.Animation.KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(800))));
+        kf.KeyFrames.Add(new System.Windows.Media.Animation.LinearDoubleKeyFrame(0, System.Windows.Media.Animation.KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(1150))));
+        DimToast.BeginAnimation(OpacityProperty, kf);
     }
 
     private void OnTitleDrag(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -211,7 +232,7 @@ public partial class AnnotationWindow : Window
     private void EnsureSpotlight()
     {
         if (_spotlight != null) return;
-        _spotlight = new ShapePath { Fill = new SolidColorBrush(Color.FromArgb(0xDC, 0, 0, 0)), IsHitTestVisible = false };
+        _spotlight = new ShapePath { Fill = new SolidColorBrush(Color.FromArgb(DimAlpha, 0, 0, 0)), IsHitTestVisible = false };
         Surface.Children.Insert(1, _spotlight);   // 이미지 위, 다른 주석 아래
     }
 
@@ -250,7 +271,7 @@ public partial class AnnotationWindow : Window
 
     private void OnCopy(object sender, RoutedEventArgs e)
     {
-        try { Clipboard.SetImage(RenderComposite()); MetaFlash("복사됨"); } catch { }
+        try { Clipboard.SetImage(RenderComposite()); Close(); } catch { }
     }
 
     private void OnSave(object sender, RoutedEventArgs e)

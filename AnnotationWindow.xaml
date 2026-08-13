@@ -50,11 +50,19 @@
             </StackPanel>
         </Border>
         <Border Padding="10" Background="#FF15151A">
-            <Canvas x:Name="Surface" Background="Transparent"
-                    MouseLeftButtonDown="OnDown" MouseMove="OnMove" MouseLeftButtonUp="OnUp"
-                    ClipToBounds="True">
-                <Image x:Name="BaseImage" SnapsToDevicePixels="True"/>
-            </Canvas>
+            <Grid>
+                <Canvas x:Name="Surface" Background="Transparent"
+                        MouseLeftButtonDown="OnDown" MouseMove="OnMove" MouseLeftButtonUp="OnUp"
+                        MouseWheel="OnWheel" ClipToBounds="True">
+                    <Image x:Name="BaseImage" SnapsToDevicePixels="True"/>
+                </Canvas>
+                <Border x:Name="DimToast" Opacity="0" IsHitTestVisible="False"
+                        HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,16,0,0"
+                        Background="#E6101418" CornerRadius="8" Padding="14,8"
+                        BorderBrush="#33FF33" BorderThickness="1">
+                    <TextBlock x:Name="DimToastText" Foreground="White" FontSize="15" FontWeight="SemiBold"/>
+                </Border>
+            </Grid>
         </Border>
     </DockPanel>
     </Border>

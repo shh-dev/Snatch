@@ -42,7 +42,7 @@ public partial class QueueStrip : Window
     public QueueStrip()
     {
         InitializeComponent();
-        _follow = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(15) };
+        _follow = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(28) };
         _follow.Tick += (_, _) => OnTick();
         _previewTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(PreviewMs) };
         _previewTimer.Tick += (_, _) =>

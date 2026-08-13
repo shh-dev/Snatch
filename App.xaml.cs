@@ -248,16 +248,15 @@ public partial class App : Application
         _capturing = true;
         try
         {
-            // 1) 커서 있는 모니터만 즉시 얼린다 (드롭다운/메뉴가 닫히기 전 픽셀 확보, 전체 데스크탑보다 가벼움)
-            var mon = WinForms.Screen.FromPoint(WinForms.Cursor.Position).Bounds; // 물리 px
+            // 1) 전체 가상 데스크탑(모든 모니터)을 즉시 얼린다 → 모니터 경계 넘어 선택 가능
+            var vs = WinForms.SystemInformation.VirtualScreen; // 물리 px
             var windows = Win32.VisibleTopWindows();  // Space 창모드용 (얼리기 전 z순서)
-            var frozen = Capture.GrabRegion(mon.X, mon.Y, mon.Width, mon.Height);
-            int ox = mon.X, oy = mon.Y;
+            var frozen = Capture.GrabRegion(vs.X, vs.Y, vs.Width, vs.Height);
+            int ox = vs.X, oy = vs.Y;
             try
             {
                 // 2) 정지 이미지를 배경으로 오버레이 띄우고 영역 선택 (포커스 뺏겨도 무관)
-                var overlay = new CaptureOverlay();
-                overlay.SetTargetMonitor(mon.X, mon.Y, mon.Width, mon.Height);
+                var overlay = new CaptureOverlay();  // SetTargetMonitor 안 함 → 전체 가상화면 덮음
                 overlay.SetFrozen(Capture.ToBitmapSource(frozen));
                 overlay.SetWindows(windows);
                 var ok = overlay.ShowDialog();
@@ -487,6 +486,7 @@ public partial class App : Application
             Dispatcher.Invoke(SyncQueueUi);
         };
         menu.Items.Add(keepItem);
+
 
         var ytItem = new WinForms.ToolStripMenuItem("유튜브 H264 다운로드") { Checked = _settings.YoutubeDownload, CheckOnClick = true };
         ytItem.CheckedChanged += (_, _) => { _settings.YoutubeDownload = ytItem.Checked; _settings.Save(); };
