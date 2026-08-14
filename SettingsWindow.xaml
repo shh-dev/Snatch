@@ -1,71 +1,87 @@
 <Window x:Class="Snatch.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Snatch 설정" Width="560" Height="580"
+        Title="Snatch 설정" Width="560" Height="560"
         WindowStartupLocation="CenterScreen" Background="#FF23232B"
         ResizeMode="CanMinimize">
-    <Grid Margin="16">
+    <Grid Margin="14">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Text="즐겨찾기 폴더" Foreground="White" FontSize="14" FontWeight="Bold" Margin="0,0,0,8"/>
+        <TabControl Grid.Row="0" Background="#FF1A1A20" BorderThickness="0">
+            <!-- 캡처 · 소리 -->
+            <TabItem Header="캡처 · 소리">
+                <StackPanel Margin="14">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <CheckBox x:Name="ClipChk" Content="캡처 클립보드 복사" Foreground="White" VerticalAlignment="Center"/>
+                        <Button Content="캡처 저장폴더" Click="OnPickShotDir" Padding="8,3" Margin="12,0,6,0"/>
+                        <TextBlock x:Name="ShotDirText" Foreground="#AAB0B8" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="230"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,12,0,0">
+                        <CheckBox x:Name="SoundChk" Content="소리 알림" Foreground="White" VerticalAlignment="Center"/>
+                        <Button Content="음원 선택" Click="OnPickSound" Padding="8,3" Margin="12,0,6,0"/>
+                        <Button Content="기본음" Click="OnDefaultSound" Padding="8,3" Margin="0,0,6,0"/>
+                        <Button Content="▶ 듣기" Click="OnTestSound" Padding="8,3"/>
+                        <TextBlock x:Name="SoundText" Foreground="#AAB0B8" VerticalAlignment="Center" Margin="10,0,0,0" TextTrimming="CharacterEllipsis" MaxWidth="120"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,12,0,0">
+                        <TextBlock Text="캡처 소리:" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <Button Content="음원 선택" Click="OnPickCapSound" Padding="8,3" Margin="0,0,6,0"/>
+                        <Button Content="기본 셔터음" Click="OnDefaultCapSound" Padding="8,3" Margin="0,0,6,0"/>
+                        <Button Content="▶ 듣기" Click="OnTestCapSound" Padding="8,3"/>
+                        <TextBlock x:Name="CapSoundText" Foreground="#AAB0B8" VerticalAlignment="Center" Margin="10,0,0,0" TextTrimming="CharacterEllipsis" MaxWidth="120"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,12,0,0">
+                        <TextBlock Text="자동숨김(초):" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBox x:Name="HideBox" Width="50" Padding="4,2"/>
+                        <TextBlock Text="알림 위치:" Foreground="White" VerticalAlignment="Center" Margin="16,0,8,0"/>
+                        <ComboBox x:Name="PosBox" Width="130" SelectedValuePath="Tag">
+                            <ComboBoxItem Tag="Right">우하단</ComboBoxItem>
+                            <ComboBoxItem Tag="Center">중앙 하단</ComboBoxItem>
+                            <ComboBoxItem Tag="Left">좌하단</ComboBoxItem>
+                            <ComboBoxItem Tag="Mouse">마우스 근처</ComboBoxItem>
+                        </ComboBox>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,12,0,0">
+                        <TextBlock Text="다운로드 폴더:" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                        <TextBlock x:Name="DlText" Foreground="#AAB0B8" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="320"/>
+                    </StackPanel>
+                </StackPanel>
+            </TabItem>
 
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
-            <Button Content="+ 폴더 추가" Click="OnAddFav" Padding="10,5" Margin="0,0,8,0"/>
-            <Button Content="− 선택 삭제" Click="OnRemoveFav" Padding="10,5"/>
-        </StackPanel>
+            <!-- 다운로드 -->
+            <TabItem Header="다운로드">
+                <StackPanel Margin="14">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <CheckBox x:Name="YtChk" Content="유튜브 H264 다운로드 (1080p)" Foreground="White" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,12,0,0">
+                        <Button Content="다운로드 폴더" Click="OnPickYtDir" Padding="8,3" Margin="0,0,6,0"/>
+                        <Button Content="📂 열기" Click="OnOpenYtDir" Padding="8,3" Margin="0,0,6,0"/>
+                        <TextBlock x:Name="YtDirText" Foreground="#AAB0B8" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="320"/>
+                    </StackPanel>
+                </StackPanel>
+            </TabItem>
 
-        <ListBox x:Name="FavList" Grid.Row="2" Background="#FF1A1A20" Foreground="White" BorderThickness="0"/>
+            <!-- 즐겨찾기 -->
+            <TabItem Header="즐겨찾기 폴더">
+                <Grid Margin="14">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+                        <Button Content="+ 폴더 추가" Click="OnAddFav" Padding="10,5" Margin="0,0,8,0"/>
+                        <Button Content="− 선택 삭제" Click="OnRemoveFav" Padding="10,5"/>
+                    </StackPanel>
+                    <ListBox x:Name="FavList" Grid.Row="1" Background="#FF15151A" Foreground="White" BorderThickness="0"/>
+                </Grid>
+            </TabItem>
+        </TabControl>
 
-        <StackPanel Grid.Row="3" Margin="0,12,0,0">
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock Text="자동숨김(초):" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <TextBox x:Name="HideBox" Width="50" Padding="4,2"/>
-                <TextBlock Text="다운로드 폴더:" Foreground="White" VerticalAlignment="Center" Margin="16,0,8,0"/>
-                <TextBlock x:Name="DlText" Foreground="#AAB0B8" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="200"/>
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,10,0,0">
-                <CheckBox x:Name="SoundChk" Content="소리 알림" Foreground="White" VerticalAlignment="Center"/>
-                <Button Content="음원 선택" Click="OnPickSound" Padding="8,3" Margin="12,0,6,0"/>
-                <Button Content="기본음" Click="OnDefaultSound" Padding="8,3" Margin="0,0,6,0"/>
-                <Button Content="▶ 듣기" Click="OnTestSound" Padding="8,3"/>
-                <TextBlock x:Name="SoundText" Foreground="#AAB0B8" VerticalAlignment="Center" Margin="10,0,0,0" TextTrimming="CharacterEllipsis" MaxWidth="120"/>
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,10,0,0">
-                <TextBlock Text="캡처 소리:" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <Button Content="음원 선택" Click="OnPickCapSound" Padding="8,3" Margin="0,0,6,0"/>
-                <Button Content="기본 셔터음" Click="OnDefaultCapSound" Padding="8,3" Margin="0,0,6,0"/>
-                <Button Content="▶ 듣기" Click="OnTestCapSound" Padding="8,3"/>
-                <TextBlock x:Name="CapSoundText" Foreground="#AAB0B8" VerticalAlignment="Center" Margin="10,0,0,0" TextTrimming="CharacterEllipsis" MaxWidth="120"/>
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,10,0,0">
-                <CheckBox x:Name="ClipChk" Content="캡처 클립보드 복사" Foreground="White" VerticalAlignment="Center"/>
-                <Button Content="캡처 저장폴더" Click="OnPickShotDir" Padding="8,3" Margin="12,0,6,0"/>
-                <TextBlock x:Name="ShotDirText" Foreground="#AAB0B8" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="200"/>
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,10,0,0">
-                <CheckBox x:Name="YtChk" Content="유튜브 H264 다운로드" Foreground="White" VerticalAlignment="Center"/>
-                <Button Content="다운로드 폴더" Click="OnPickYtDir" Padding="8,3" Margin="12,0,6,0"/>
-                <Button Content="📂 열기" Click="OnOpenYtDir" Padding="8,3" Margin="0,0,6,0"/>
-                <TextBlock x:Name="YtDirText" Foreground="#AAB0B8" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="180"/>
-            </StackPanel>
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,10,0,0">
-                <TextBlock Text="알림 위치:" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <ComboBox x:Name="PosBox" Width="140" SelectedValuePath="Tag">
-                    <ComboBoxItem Tag="Right">우하단</ComboBoxItem>
-                    <ComboBoxItem Tag="Center">중앙 하단</ComboBoxItem>
-                    <ComboBoxItem Tag="Left">좌하단</ComboBoxItem>
-                    <ComboBoxItem Tag="Mouse">마우스 근처</ComboBoxItem>
-                </ComboBox>
-            </StackPanel>
-        </StackPanel>
-
-        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
             <Button Content="저장" Click="OnSave" Padding="16,6" Margin="0,0,8,0"/>
             <Button Content="닫기" Click="OnCloseBtn" Padding="16,6"/>
         </StackPanel>

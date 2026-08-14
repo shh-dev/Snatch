@@ -36,18 +36,31 @@
     <Border BorderBrush="#33FF33" BorderThickness="1">
     <DockPanel>
         <Border DockPanel.Dock="Top" Background="#FF1E1E24" Padding="8,7" MouseLeftButtonDown="OnTitleDrag">
-            <StackPanel Orientation="Horizontal">
-                <Button x:Name="BtnSpot"  Content="🔦 스포트라이트" Style="{StaticResource TbBtn}" Click="OnTool" Tag="spot"/>
-                <Button x:Name="BtnArrow" Content="↗ 화살표"        Style="{StaticResource TbBtn}" Click="OnTool" Tag="arrow"/>
-                <Button x:Name="BtnRect"  Content="▭ 사각형"        Style="{StaticResource TbBtn}" Click="OnTool" Tag="rect"/>
-                <Button x:Name="BtnEll"   Content="◯ 원"           Style="{StaticResource TbBtn}" Click="OnTool" Tag="ellipse"/>
-                <Button x:Name="BtnHl"    Content="🖍 형광펜"        Style="{StaticResource TbBtn}" Click="OnTool" Tag="hl"/>
-                <Button x:Name="BtnNum"   Content="① 넘버"          Style="{StaticResource TbBtn}" Click="OnTool" Tag="num"/>
-                <Border Width="1" Background="#33FFFFFF" Margin="6,3"/>
-                <Button Content="↶" ToolTip="실행취소 (Ctrl+Z)" Style="{StaticResource TbBtn}" Click="OnUndo"/>
-                <Button Content="⧉" ToolTip="복사 (Ctrl+C)"    Style="{StaticResource TbBtn}" Click="OnCopy"/>
-                <Button Content="💾" ToolTip="저장 (Ctrl+S)"   Style="{StaticResource TbBtn}" Click="OnSave"/>
-                <Button Content="✕" ToolTip="닫기 (Esc)"       Style="{StaticResource TbBtn}" Click="OnClose"/>
+            <StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <Button x:Name="BtnSpot"  Content="🔦 스포트라이트" Style="{StaticResource TbBtn}" Click="OnTool" Tag="spot"/>
+                    <Button x:Name="BtnArrow" Content="↗ 화살표"        Style="{StaticResource TbBtn}" Click="OnTool" Tag="arrow"/>
+                    <Button x:Name="BtnRect"  Content="▭ 사각형"        Style="{StaticResource TbBtn}" Click="OnTool" Tag="rect"/>
+                    <Button x:Name="BtnEll"   Content="◯ 원"           Style="{StaticResource TbBtn}" Click="OnTool" Tag="ellipse"/>
+                    <Button x:Name="BtnHl"    Content="🖍 형광펜"        Style="{StaticResource TbBtn}" Click="OnTool" Tag="hl"/>
+                    <Button x:Name="BtnBlur"  Content="🔒 블러"         Style="{StaticResource TbBtn}" Click="OnTool" Tag="blur"/>
+                    <Button x:Name="BtnText"  Content="🅰 텍스트"        Style="{StaticResource TbBtn}" Click="OnTool" Tag="text"/>
+                    <Button x:Name="BtnNum"   Content="① 넘버"          Style="{StaticResource TbBtn}" Click="OnTool" Tag="num"/>
+                    <Border Width="1" Background="#33FFFFFF" Margin="6,3"/>
+                    <Button Content="↶" ToolTip="실행취소 (Ctrl+Z)" Style="{StaticResource TbBtn}" Click="OnUndo"/>
+                    <Button Content="⧉" ToolTip="복사 (Ctrl+C)"    Style="{StaticResource TbBtn}" Click="OnCopy"/>
+                    <Button Content="💾" ToolTip="저장 (Ctrl+S)"   Style="{StaticResource TbBtn}" Click="OnSave"/>
+                    <Button Content="✕" ToolTip="닫기 (Esc)"       Style="{StaticResource TbBtn}" Click="OnClose"/>
+                </StackPanel>
+                <StackPanel x:Name="StyleRow" Orientation="Horizontal" Margin="0,7,0,0">
+                    <TextBlock Text="색상" Foreground="#AAB0B8" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <StackPanel x:Name="Swatches" Orientation="Horizontal"/>
+                    <Border Width="1" Background="#33FFFFFF" Margin="8,3"/>
+                    <TextBlock Text="굵기" Foreground="#AAB0B8" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <Button x:Name="BtnW1" Content="ᐧ 얇게"  Style="{StaticResource TbBtn}" Click="OnWidth" Tag="2"/>
+                    <Button x:Name="BtnW2" Content="― 보통"  Style="{StaticResource TbBtn}" Click="OnWidth" Tag="4"/>
+                    <Button x:Name="BtnW3" Content="▬ 굵게"  Style="{StaticResource TbBtn}" Click="OnWidth" Tag="7"/>
+                </StackPanel>
             </StackPanel>
         </Border>
         <Border Padding="10" Background="#FF15151A">

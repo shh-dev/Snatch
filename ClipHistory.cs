@@ -12,6 +12,7 @@ public class HistoryItem
     public string? ColorHex { get; set; }
     public string? File { get; set; }            // image path
     public bool Owned { get; set; }              // true = we wrote this file, delete it with the item
+    public bool Pinned { get; set; }             // 고정 — 상단 유지, 트림 제외
     public DateTime Time { get; set; }
 }
 
@@ -106,11 +107,15 @@ public class ClipHistory
     {
         while (Items.Count > Max)
         {
-            var old = Items[^1];
-            Items.RemoveAt(Items.Count - 1);
+            int idx = Items.FindLastIndex(i => !i.Pinned);   // 고정 아닌 가장 오래된 것부터
+            if (idx < 0) break;   // 전부 고정
+            var old = Items[idx];
+            Items.RemoveAt(idx);
             DeleteFile(old);
         }
     }
+
+    public void TogglePin(HistoryItem i) { i.Pinned = !i.Pinned; Save(); }
 
     public void Remove(HistoryItem item)
     {

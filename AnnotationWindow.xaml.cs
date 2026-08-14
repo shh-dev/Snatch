@@ -19,14 +19,19 @@ public partial class AnnotationWindow : Window
     private readonly double _dispW, _dispH;
 
     private string _tool = "arrow";
-    private static readonly Brush Accent = new SolidColorBrush(Color.FromRgb(0xFF, 0x33, 0x33));
+    private SolidColorBrush _color = new(Color.FromRgb(0xFF, 0x33, 0x33));   // 주석 색 (팔레트로 변경)
+    private double _strokeW = 3;                                             // 선 굵기
+    private Brush Accent => _color;
+    private double Stroke => _strokeW;
     private static readonly Brush HlBrush = new SolidColorBrush(Color.FromRgb(0xFF, 0xF2, 0x00));  // 불투명 — 멀티플라이 셰이더가 합성
-    private const double Stroke = 3, HlWidth = 16;
+    private const double HlWidth = 16;
     private Canvas? _hlLayer;   // highlighter strokes, multiply-blended over the image
+    private BitmapSource _srcBmp = null!;   // full-res source for blur/mosaic
 
     private Point _start;
     private bool _dragging;
     private Shape? _live;              // shape being dragged
+    private Image? _blurLive;          // mosaic being dragged
     private ShapePath? _spotlight;         // single dim overlay, multiple bright holes
     private readonly List<Rect> _holes = new();
     private int _dimTransPct = 15;         // 딤 투명도 % (휠 5%단위, 10~100)
@@ -41,6 +46,7 @@ public partial class AnnotationWindow : Window
         _settings = settings;
 
         var bmp = Load(path);
+        _srcBmp = bmp;
         _origW = bmp.PixelWidth; _origH = bmp.PixelHeight;
 
         // fit to ~85% of the work area
@@ -61,7 +67,55 @@ public partial class AnnotationWindow : Window
         };
         Surface.Children.Insert(1, _hlLayer);
 
+        BuildSwatches();
+        SelectWidth(3);
         SelectTool("arrow");
+    }
+
+    private static readonly (string hex, byte r, byte g, byte b)[] Palette =
+    {
+        ("#FF3333", 0xFF, 0x33, 0x33), ("#FF9500", 0xFF, 0x95, 0x00), ("#FFEB3B", 0xFF, 0xEB, 0x3B),
+        ("#33CC55", 0x33, 0xCC, 0x55), ("#2D8CFF", 0x2D, 0x8C, 0xFF), ("#FFFFFF", 0xFF, 0xFF, 0xFF), ("#111111", 0x11, 0x11, 0x11),
+    };
+
+    private void BuildSwatches()
+    {
+        foreach (var c in Palette)
+        {
+            var col = Color.FromRgb(c.r, c.g, c.b);
+            var b = new System.Windows.Controls.Border
+            {
+                Width = 20, Height = 20, CornerRadius = new CornerRadius(4), Margin = new Thickness(0, 0, 4, 0),
+                Background = new SolidColorBrush(col), Cursor = System.Windows.Input.Cursors.Hand,
+                BorderBrush = Brushes.Transparent, BorderThickness = new Thickness(2),
+                Tag = col,
+            };
+            b.MouseLeftButtonDown += (_, _) => SelectColor(col);
+            Swatches.Children.Add(b);
+        }
+        SelectColor(Color.FromRgb(0xFF, 0x33, 0x33));
+    }
+
+    private void SelectColor(Color col)
+    {
+        _color = new SolidColorBrush(col);
+        foreach (System.Windows.Controls.Border b in Swatches.Children)
+            b.BorderBrush = (b.Tag is Color bc && bc == col) ? Brushes.White : Brushes.Transparent;
+    }
+
+    private void OnWidth(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && double.TryParse(btn.Tag as string, out var w)) SelectWidth(w);
+    }
+
+    private void SelectWidth(double w)
+    {
+        _strokeW = w;
+        var active = new SolidColorBrush(Color.FromRgb(0x2D, 0x6C, 0xDF));
+        var normal = new SolidColorBrush(Color.FromRgb(0x2A, 0x2A, 0x33));
+        BtnW1.Background = w <= 2 ? active : normal;
+        BtnW2.Background = (w > 2 && w <= 4) ? active : normal;
+        BtnW3.Background = w > 4 ? active : normal;
     }
 
     private static BitmapSource Load(string path)
@@ -85,7 +139,7 @@ public partial class AnnotationWindow : Window
         _tool = t;
         var active = new SolidColorBrush(Color.FromRgb(0x2D, 0x6C, 0xDF));
         var normal = new SolidColorBrush(Color.FromRgb(0x2A, 0x2A, 0x33));
-        foreach (var (btn, tag) in new[] { (BtnSpot, "spot"), (BtnArrow, "arrow"), (BtnRect, "rect"), (BtnEll, "ellipse"), (BtnHl, "hl"), (BtnNum, "num") })
+        foreach (var (btn, tag) in new[] { (BtnSpot, "spot"), (BtnArrow, "arrow"), (BtnRect, "rect"), (BtnEll, "ellipse"), (BtnHl, "hl"), (BtnBlur, "blur"), (BtnText, "text"), (BtnNum, "num") })
             btn.Background = tag == t ? active : normal;
     }
 
@@ -119,8 +173,14 @@ public partial class AnnotationWindow : Window
         _start = e.GetPosition(Surface);
 
         if (_tool == "num") { PlaceNumber(_start); return; }
+        if (_tool == "text") { PlaceTextBox(_start); return; }
 
         _dragging = true;
+        if (_tool == "blur")
+        {
+            _blurLive = null;   // 드래그로 영역 결정 후 OnMove에서 생성
+            return;
+        }
         if (_tool == "rect")
         {
             _live = new Rectangle { Stroke = Accent, StrokeThickness = Stroke, Fill = Brushes.Transparent };
@@ -160,6 +220,15 @@ public partial class AnnotationWindow : Window
         if (!_dragging) return;
         var p = Clamp(e.GetPosition(Surface));
 
+        if (_tool == "blur")
+        {
+            var r = new Rect(new Point(Math.Min(_start.X, p.X), Math.Min(_start.Y, p.Y)),
+                             new Size(Math.Abs(p.X - _start.X), Math.Abs(p.Y - _start.Y)));
+            if (_blurLive != null) Surface.Children.Remove(_blurLive);
+            _blurLive = MakeMosaic(r);
+            if (_blurLive != null) Surface.Children.Add(_blurLive);
+            return;
+        }
         if ((_tool == "rect" || _tool == "ellipse") && _live is Shape sh)
         {
             double x = Math.Min(_start.X, p.X), y = Math.Min(_start.Y, p.Y);
@@ -220,7 +289,69 @@ public partial class AnnotationWindow : Window
             if (h.Width < 6 || h.Height < 6) { _holes.RemoveAt(_holes.Count - 1); RebuildSpotlight(); }
             else _added.Add(new SpotMarker());   // undo = 마지막 구멍 제거
         }
+        else if (_tool == "blur")
+        {
+            if (_blurLive != null && _blurLive.Width >= 6 && _blurLive.Height >= 6) _added.Add(_blurLive);
+            else if (_blurLive != null) Surface.Children.Remove(_blurLive);
+            _blurLive = null;
+        }
         _live = null;
+    }
+
+    // ---- blur / mosaic ----
+    private Image? MakeMosaic(Rect r)
+    {
+        try
+        {
+            double kx = _origW / _dispW, ky = _origH / _dispH;
+            int sx = (int)(r.X * kx), sy = (int)(r.Y * ky);
+            int sw = (int)(r.Width * kx), sh = (int)(r.Height * ky);
+            sw = Math.Min(sw, _origW - sx); sh = Math.Min(sh, _origH - sy);
+            if (sw < 2 || sh < 2 || sx < 0 || sy < 0) return null;
+
+            var crop = new CroppedBitmap(_srcBmp, new Int32Rect(sx, sy, sw, sh));
+            double block = Math.Max(1, Math.Max(sw, sh) / 16.0);   // ~16 blocks across
+            var small = new TransformedBitmap(crop, new ScaleTransform(1.0 / block, 1.0 / block));
+            small.Freeze();
+
+            var img = new Image { Source = small, Width = r.Width, Height = r.Height, Stretch = Stretch.Fill };
+            RenderOptions.SetBitmapScalingMode(img, BitmapScalingMode.NearestNeighbor);
+            Canvas.SetLeft(img, r.X); Canvas.SetTop(img, r.Y);
+            return img;
+        }
+        catch { return null; }
+    }
+
+    // ---- text ----
+    private void PlaceTextBox(Point at)
+    {
+        var tb = new TextBox
+        {
+            Background = Brushes.Transparent, BorderThickness = new Thickness(0), Foreground = _color,
+            FontSize = 14 + _strokeW * 3, FontWeight = FontWeights.Bold, MinWidth = 40,
+            CaretBrush = _color, AcceptsReturn = false,
+        };
+        Canvas.SetLeft(tb, at.X); Canvas.SetTop(tb, at.Y);
+        Surface.Children.Add(tb);
+        tb.Loaded += (_, _) => tb.Focus();
+        tb.KeyDown += (_, ke) => { if (ke.Key == System.Windows.Input.Key.Enter || ke.Key == System.Windows.Input.Key.Escape) FinalizeText(tb, at); };
+        tb.LostFocus += (_, _) => FinalizeText(tb, at);
+    }
+
+    private void FinalizeText(TextBox tb, Point at)
+    {
+        if (!Surface.Children.Contains(tb)) return;
+        Surface.Children.Remove(tb);
+        var text = tb.Text.Trim();
+        if (text.Length == 0) return;
+        var block = new TextBlock
+        {
+            Text = text, Foreground = tb.Foreground, FontSize = tb.FontSize, FontWeight = FontWeights.Bold,
+            TextWrapping = TextWrapping.Wrap, MaxWidth = _dispW,
+        };
+        Canvas.SetLeft(block, at.X); Canvas.SetTop(block, at.Y);
+        Surface.Children.Add(block);
+        _added.Add(block);
     }
 
     private Point Clamp(Point p) => new(Math.Clamp(p.X, 0, _dispW), Math.Clamp(p.Y, 0, _dispH));

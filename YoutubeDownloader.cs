@@ -22,8 +22,8 @@ public static class YoutubeDownloader
     }
 
     /// <summary>Runs yt-dlp async into <paramref name="dir"/> (use a temp/scratch dir — yt-dlp writes fragment
-    /// files there too). onDone(finalFilePath) on success. Callbacks fire on a worker thread.</summary>
-    public static void Download(string url, string dir, Action<string> onDone, Action<string> onFail)
+    /// files there too). onDone(finalFilePath) on success. onProgress(percent 0-100) during download. Callbacks fire on a worker thread.</summary>
+    public static void Download(string url, string dir, Action<string> onDone, Action<string> onFail, Action<int>? onProgress = null)
     {
         try
         {
@@ -41,7 +41,8 @@ public static class YoutubeDownloader
             // H264(avc1) 영상 + m4a 오디오 우선, 안되면 mp4, 최후엔 최고화질
             psi.ArgumentList.Add("--no-playlist");
             psi.ArgumentList.Add("-f");
-            psi.ArgumentList.Add("bv*[vcodec^=avc1]+ba[acodec^=mp4a]/b[ext=mp4][vcodec^=avc1]/bv*+ba/b");
+            // H264(avc1) + m4a, 1080p 상한
+            psi.ArgumentList.Add("bv*[vcodec^=avc1][height<=1080]+ba[acodec^=mp4a]/b[ext=mp4][height<=1080]/bv*[height<=1080]+ba/b[height<=1080]/bv*+ba/b");
             psi.ArgumentList.Add("--merge-output-format");
             psi.ArgumentList.Add("mp4");
             psi.ArgumentList.Add("-P");
@@ -51,6 +52,9 @@ public static class YoutubeDownloader
             psi.ArgumentList.Add("--no-simulate");
             psi.ArgumentList.Add("--print");
             psi.ArgumentList.Add("after_move:filepath");
+            psi.ArgumentList.Add("--newline");   // 진행률 줄단위
+            psi.ArgumentList.Add("--progress-template");
+            psi.ArgumentList.Add("PZZ%(progress._percent_str)s");
             var ff = ResolveFfmpegDir();
             if (ff != null) { psi.ArgumentList.Add("--ffmpeg-location"); psi.ArgumentList.Add(ff); }
             psi.ArgumentList.Add(url);
@@ -58,7 +62,19 @@ public static class YoutubeDownloader
             var proc = new Process { StartInfo = psi, EnableRaisingEvents = true };
             var outLines = new List<string>();
             var err = new StringBuilder();
-            proc.OutputDataReceived += (_, e) => { if (e.Data != null) outLines.Add(e.Data); };
+            proc.OutputDataReceived += (_, e) =>
+            {
+                if (e.Data == null) return;
+                if (e.Data.StartsWith("PZZ"))
+                {
+                    if (onProgress != null)
+                    {
+                        var s = e.Data[3..].Trim().TrimEnd('%').Trim();
+                        if (double.TryParse(s, out var pct)) onProgress((int)Math.Round(pct));
+                    }
+                }
+                else outLines.Add(e.Data);
+            };
             proc.ErrorDataReceived += (_, e) => { if (e.Data != null) err.AppendLine(e.Data); };
             proc.Exited += (_, _) =>
             {

@@ -35,6 +35,7 @@ public partial class App : Application
             return;
         }
 
+        SetupCrashLog();
         _settings = Settings.Load();
         _history.Load();
         ToastManager.Position = _settings.ToastPosition;
@@ -46,6 +47,25 @@ public partial class App : Application
         SetupHotkeys();
         SetupClipboard();
         BuildTray();
+    }
+
+    private void SetupCrashLog()
+    {
+        DispatcherUnhandledException += (_, e) => { LogEx("UI", e.Exception); e.Handled = true; };   // 트레이앱 생존 우선
+        AppDomain.CurrentDomain.UnhandledException += (_, e) => LogEx("Domain", e.ExceptionObject as Exception);
+        System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (_, e) => { LogEx("Task", e.Exception); e.SetObserved(); };
+    }
+
+    private static void LogEx(string src, Exception? ex)
+    {
+        try
+        {
+            var dir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Snatch");
+            System.IO.Directory.CreateDirectory(dir);
+            System.IO.File.AppendAllText(System.IO.Path.Combine(dir, "error.log"),
+                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {src}: {ex}\n\n");
+        }
+        catch { }
     }
 
     private void SetupClipboard()
@@ -66,6 +86,9 @@ public partial class App : Application
     }
 
     private readonly HashSet<string> _ytDone = new();   // 세션 내 이미 받은 URL
+    private int _ytActive;   // 진행 중 다운로드 수
+
+    private void RestoreTrayText() { if (_ytActive <= 0) UpdateTrayCount(); }
 
     private void OnClipboardChanged(ClipContent content) => Dispatcher.Invoke(() =>
     {
@@ -83,14 +106,18 @@ public partial class App : Application
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Snatch", "yt-tmp", Guid.NewGuid().ToString("N"));
 
         _tray?.ShowBalloonTip(3000, "영상 다운로드 시작 (H264)", url, WinForms.ToolTipIcon.Info);
+        _ytActive++;
         YoutubeDownloader.Download(url, tempDir,
-            tempPath => Dispatcher.Invoke(() => FinishYoutube(tempPath, targetDir, tempDir)),
+            tempPath => Dispatcher.Invoke(() => { _ytActive--; FinishYoutube(tempPath, targetDir, tempDir); RestoreTrayText(); }),
             msg => Dispatcher.Invoke(() =>
             {
+                _ytActive--;
                 _ytDone.Remove(url);   // 실패는 재시도 허용
                 TryDeleteDir(tempDir);
+                RestoreTrayText();
                 _tray?.ShowBalloonTip(4000, "영상 다운로드 실패", msg, WinForms.ToolTipIcon.Error);
-            }));
+            }),
+            pct => Dispatcher.Invoke(() => { if (_tray != null && _ytActive > 0) _tray.Text = $"Snatch · ⬇ {pct}%{(_ytActive > 1 ? $" ×{_ytActive}" : "")}"; }));
     }
 
     private void FinishYoutube(string tempPath, string targetDir, string tempDir)
@@ -178,6 +205,8 @@ public partial class App : Application
     private string _regionHk = "(없음)";
     private string _fullHk = "(없음)";
     private string _histHk = "(없음)";
+    private string _plainHk = "(없음)";
+    private string _ocrHk = "(없음)";
 
     private void SetupHotkeys()
     {
@@ -211,13 +240,26 @@ public partial class App : Application
             (0x43, true, false, true, "Ctrl+Alt+C"),
         };
 
+        var plainCands = new (uint vk, bool c, bool s, bool a, string label)[]
+        {
+            (0x56, true, false, true, "Ctrl+Alt+V"),
+            (0x56, true, true, true,  "Ctrl+Shift+Alt+V"),
+        };
+        var ocrCands = new (uint vk, bool c, bool s, bool a, string label)[]
+        {
+            (0x54, true, false, true, "Ctrl+Alt+T"),
+            (0x54, true, true, false, "Ctrl+Shift+T"),
+        };
+
         _fullHk = TryRegister(fullCands, CaptureFull) ?? "(없음)";
         _histHk = TryRegister(histCands, ToggleHistory) ?? "(없음)";
+        _plainHk = TryRegister(plainCands, PlainPaste) ?? "(없음)";
+        _ocrHk = TryRegister(ocrCands, OcrLast) ?? "(없음)";
         try
         {
             var dir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Snatch");
             System.IO.Directory.CreateDirectory(dir);
-            System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "hotkeys.log"), $"region={_regionHk}\nfull={_fullHk}\nhistory={_histHk}\n");
+            System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "hotkeys.log"), $"region={_regionHk}\nfull={_fullHk}\nhistory={_histHk}\nplainpaste={_plainHk}\nocr={_ocrHk}\n");
         }
         catch { }
     }
@@ -331,6 +373,45 @@ public partial class App : Application
     {
         _queue.Clear();
         SyncQueueUi();
+    }
+
+    // 마지막 캡처에서 텍스트 추출 (OCR, Ctrl+Alt+T)
+    private async void OcrLast()
+    {
+        var path = _lastShotPath;
+        if (path == null || !System.IO.File.Exists(path)) return;
+        _tray?.ShowBalloonTip(2000, "OCR", "텍스트 추출 중…", WinForms.ToolTipIcon.Info);
+        try
+        {
+            var text = await OcrService.RecognizeAsync(path);
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                _tray?.ShowBalloonTip(3000, "OCR", "인식된 텍스트 없음", WinForms.ToolTipIcon.Warning);
+                return;
+            }
+            _clip?.Suppress();
+            Clipboard.SetText(text);
+            EnqueueClip(new ClipContent { Text = text });
+            _tray?.ShowBalloonTip(3000, "OCR — 클립보드 복사됨", text.Length > 80 ? text[..80] + "…" : text, WinForms.ToolTipIcon.Info);
+        }
+        catch (Exception ex) { LogEx("OCR", ex); _tray?.ShowBalloonTip(3000, "OCR 실패", ex.Message, WinForms.ToolTipIcon.Error); }
+    }
+
+    // 서식 없는 텍스트로 붙여넣기 (Ctrl+Alt+V)
+    private void PlainPaste()
+    {
+        try
+        {
+            if (!Clipboard.ContainsText()) return;
+            var t = Clipboard.GetText();
+            if (string.IsNullOrEmpty(t)) return;
+            _clip?.Suppress();
+            Clipboard.SetText(t);   // 유니코드 텍스트만 → RTF/HTML 서식 제거
+        }
+        catch { return; }
+        var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(70) };
+        timer.Tick += (_, _) => { timer.Stop(); SendCtrlV(); };
+        timer.Start();
     }
 
     /// <summary>Chip clicked — put it on the clipboard and paste into the focused app.</summary>
@@ -458,6 +539,8 @@ public partial class App : Application
         menu.Items.Add($"전체 캡처  ({_fullHk})", null, (_, _) => Dispatcher.Invoke(CaptureFull));
         menu.Items.Add($"클립보드 히스토리  ({_histHk})", null, (_, _) => Dispatcher.Invoke(ToggleHistory));
         menu.Items.Add("마지막 캡처 편집", null, (_, _) => Dispatcher.Invoke(EditLast));
+        menu.Items.Add($"마지막 캡처 OCR  ({_ocrHk})", null, (_, _) => Dispatcher.Invoke(OcrLast));
+        menu.Items.Add($"서식없이 붙여넣기  ({_plainHk})", null, (_, _) => Dispatcher.Invoke(PlainPaste));
         menu.Items.Add("큐 비우기", null, (_, _) => Dispatcher.Invoke(ClearQueue));
         menu.Items.Add(new WinForms.ToolStripSeparator());
         var chipItem = new WinForms.ToolStripMenuItem("미니 썸네일") { Checked = _settings.ShowChips, CheckOnClick = true };
@@ -487,6 +570,9 @@ public partial class App : Application
         };
         menu.Items.Add(keepItem);
 
+        var autoItem = new WinForms.ToolStripMenuItem("Windows 시작 시 자동실행") { Checked = AutoStart.IsEnabled(), CheckOnClick = true };
+        autoItem.CheckedChanged += (_, _) => AutoStart.Set(autoItem.Checked);
+        menu.Items.Add(autoItem);
 
         var ytItem = new WinForms.ToolStripMenuItem("유튜브 H264 다운로드") { Checked = _settings.YoutubeDownload, CheckOnClick = true };
         ytItem.CheckedChanged += (_, _) => { _settings.YoutubeDownload = ytItem.Checked; _settings.Save(); };
