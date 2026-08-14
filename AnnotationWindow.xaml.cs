@@ -20,7 +20,9 @@ public partial class AnnotationWindow : Window
 
     private string _tool = "arrow";
     private static readonly Brush Accent = new SolidColorBrush(Color.FromRgb(0xFF, 0x33, 0x33));
-    private const double Stroke = 3;
+    private static readonly Brush HlBrush = new SolidColorBrush(Color.FromRgb(0xFF, 0xF2, 0x00));  // 불투명 — 멀티플라이 셰이더가 합성
+    private const double Stroke = 3, HlWidth = 16;
+    private Canvas? _hlLayer;   // highlighter strokes, multiply-blended over the image
 
     private Point _start;
     private bool _dragging;
@@ -51,6 +53,14 @@ public partial class AnnotationWindow : Window
         Surface.Width = _dispW; Surface.Height = _dispH;
         BaseImage.Source = bmp; BaseImage.Width = _dispW; BaseImage.Height = _dispH;
 
+        // 형광펜 전용 레이어 (이미지 바로 위) — 멀티플라이 블렌드
+        _hlLayer = new Canvas
+        {
+            Width = _dispW, Height = _dispH, IsHitTestVisible = false,
+            Effect = new MultiplyEffect { Bg = new ImageBrush(bmp) { Stretch = Stretch.Fill } },
+        };
+        Surface.Children.Insert(1, _hlLayer);
+
         SelectTool("arrow");
     }
 
@@ -75,7 +85,7 @@ public partial class AnnotationWindow : Window
         _tool = t;
         var active = new SolidColorBrush(Color.FromRgb(0x2D, 0x6C, 0xDF));
         var normal = new SolidColorBrush(Color.FromRgb(0x2A, 0x2A, 0x33));
-        foreach (var (btn, tag) in new[] { (BtnSpot, "spot"), (BtnArrow, "arrow"), (BtnRect, "rect"), (BtnEll, "ellipse"), (BtnNum, "num") })
+        foreach (var (btn, tag) in new[] { (BtnSpot, "spot"), (BtnArrow, "arrow"), (BtnRect, "rect"), (BtnEll, "ellipse"), (BtnHl, "hl"), (BtnNum, "num") })
             btn.Background = tag == t ? active : normal;
     }
 
@@ -121,6 +131,18 @@ public partial class AnnotationWindow : Window
             _live = new Ellipse { Stroke = Accent, StrokeThickness = Stroke, Fill = Brushes.Transparent };
             AddShape(_live, _start);
         }
+        else if (_tool == "hl")
+        {
+            var pl = new Polyline
+            {
+                Stroke = HlBrush, StrokeThickness = HlWidth,
+                StrokeLineJoin = PenLineJoin.Miter, StrokeStartLineCap = PenLineCap.Flat, StrokeEndLineCap = PenLineCap.Flat,
+            };
+            pl.Points.Add(_start);
+            _live = pl;
+            _hlLayer?.Children.Add(pl);
+            _added.Add(pl);
+        }
         else if (_tool == "arrow")
         {
             _live = new Line { Stroke = Accent, StrokeThickness = Stroke + 1, StrokeStartLineCap = PenLineCap.Round };
@@ -143,6 +165,12 @@ public partial class AnnotationWindow : Window
             double x = Math.Min(_start.X, p.X), y = Math.Min(_start.Y, p.Y);
             Canvas.SetLeft(sh, x); Canvas.SetTop(sh, y);
             sh.Width = Math.Abs(p.X - _start.X); sh.Height = Math.Abs(p.Y - _start.Y);
+        }
+        else if (_tool == "hl" && _live is Polyline pl)
+        {
+            bool shift = (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Shift) != 0;
+            if (shift) pl.Points = new PointCollection { _start, new Point(p.X, _start.Y) };   // 수평 직선(Y 고정)
+            else pl.Points.Add(p);                                                              // 자유곡선
         }
         else if (_tool == "arrow" && _live is Line ln)
         {
@@ -181,6 +209,10 @@ public partial class AnnotationWindow : Window
         else if ((_tool == "rect" || _tool == "ellipse") && _live is Shape sh && (sh.Width < 4 || sh.Height < 4))
         {
             Surface.Children.Remove(sh); _added.Remove(sh);
+        }
+        else if (_tool == "hl" && _live is Polyline pl && (pl.Points.Count < 2 || Dist(_start, p) < 4))
+        {
+            _hlLayer?.Children.Remove(pl); _added.Remove(pl);
         }
         else if (_tool == "spot" && _holes.Count > 0)
         {
@@ -254,6 +286,7 @@ public partial class AnnotationWindow : Window
         _added.RemoveAt(_added.Count - 1);
         if (last is ArrowGroup.MarkerElement m) { Surface.Children.Remove(m.Line); Surface.Children.Remove(m.Head); }
         else if (last is SpotMarker) { if (_holes.Count > 0) _holes.RemoveAt(_holes.Count - 1); RebuildSpotlight(); }
+        else if (last is Polyline) _hlLayer?.Children.Remove(last);   // 형광펜
         else Surface.Children.Remove(last);
     }
 

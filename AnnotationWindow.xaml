@@ -41,6 +41,7 @@
                 <Button x:Name="BtnArrow" Content="↗ 화살표"        Style="{StaticResource TbBtn}" Click="OnTool" Tag="arrow"/>
                 <Button x:Name="BtnRect"  Content="▭ 사각형"        Style="{StaticResource TbBtn}" Click="OnTool" Tag="rect"/>
                 <Button x:Name="BtnEll"   Content="◯ 원"           Style="{StaticResource TbBtn}" Click="OnTool" Tag="ellipse"/>
+                <Button x:Name="BtnHl"    Content="🖍 형광펜"        Style="{StaticResource TbBtn}" Click="OnTool" Tag="hl"/>
                 <Button x:Name="BtnNum"   Content="① 넘버"          Style="{StaticResource TbBtn}" Click="OnTool" Tag="num"/>
                 <Border Width="1" Background="#33FFFFFF" Margin="6,3"/>
                 <Button Content="↶" ToolTip="실행취소 (Ctrl+Z)" Style="{StaticResource TbBtn}" Click="OnUndo"/>
