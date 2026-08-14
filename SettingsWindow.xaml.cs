@@ -36,6 +36,12 @@ public partial class SettingsWindow : Window
         if (picked != null) { _settings.YoutubeDir = picked; UpdateYtDirText(); }
     }
 
+    private void OnOpenYtDir(object sender, RoutedEventArgs e)
+    {
+        var dir = _settings.ResolvedYoutubeDir;
+        try { System.IO.Directory.CreateDirectory(dir); System.Diagnostics.Process.Start("explorer.exe", dir); } catch { }
+    }
+
     private void UpdateCapSoundText() =>
         CapSoundText.Text = string.IsNullOrWhiteSpace(_settings.CaptureSoundFile)
             ? "기본 셔터음" : System.IO.Path.GetFileName(_settings.CaptureSoundFile);

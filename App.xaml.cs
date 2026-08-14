@@ -70,7 +70,7 @@ public partial class App : Application
     private void OnClipboardChanged(ClipContent content) => Dispatcher.Invoke(() =>
     {
         EnqueueClip(content);
-        if (_settings.YoutubeDownload && content.Text is { } t && YoutubeDownloader.IsYouTubeUrl(t))
+        if (_settings.YoutubeDownload && content.Text is { } t && YoutubeDownloader.IsSupportedUrl(t))
             StartYoutubeDownload(t.Trim());
     });
 
@@ -82,14 +82,14 @@ public partial class App : Application
         var tempDir = System.IO.Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Snatch", "yt-tmp", Guid.NewGuid().ToString("N"));
 
-        _tray?.ShowBalloonTip(3000, "유튜브 다운로드 시작 (H264)", url, WinForms.ToolTipIcon.Info);
+        _tray?.ShowBalloonTip(3000, "영상 다운로드 시작 (H264)", url, WinForms.ToolTipIcon.Info);
         YoutubeDownloader.Download(url, tempDir,
             tempPath => Dispatcher.Invoke(() => FinishYoutube(tempPath, targetDir, tempDir)),
             msg => Dispatcher.Invoke(() =>
             {
                 _ytDone.Remove(url);   // 실패는 재시도 허용
                 TryDeleteDir(tempDir);
-                _tray?.ShowBalloonTip(4000, "유튜브 다운로드 실패", msg, WinForms.ToolTipIcon.Error);
+                _tray?.ShowBalloonTip(4000, "영상 다운로드 실패", msg, WinForms.ToolTipIcon.Error);
             }));
     }
 

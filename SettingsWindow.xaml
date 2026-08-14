@@ -51,7 +51,8 @@
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,10,0,0">
                 <CheckBox x:Name="YtChk" Content="유튜브 H264 다운로드" Foreground="White" VerticalAlignment="Center"/>
                 <Button Content="다운로드 폴더" Click="OnPickYtDir" Padding="8,3" Margin="12,0,6,0"/>
-                <TextBlock x:Name="YtDirText" Foreground="#AAB0B8" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="200"/>
+                <Button Content="📂 열기" Click="OnOpenYtDir" Padding="8,3" Margin="0,0,6,0"/>
+                <TextBlock x:Name="YtDirText" Foreground="#AAB0B8" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="180"/>
             </StackPanel>
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,10,0,0">
                 <TextBlock Text="알림 위치:" Foreground="White" VerticalAlignment="Center" Margin="0,0,8,0"/>

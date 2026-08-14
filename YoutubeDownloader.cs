@@ -12,7 +12,8 @@ public static class YoutubeDownloader
         @"^https?://(www\.|m\.|music\.)?(youtube\.com/(watch\?v=|shorts/|live/|embed/)|youtu\.be/)[\w\-]+",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-    public static bool IsYouTubeUrl(string? text)
+    /// <summary>다운로드 대상 링크(유튜브) 여부. ※쓰레드는 yt-dlp·gallery-dl 모두 미지원이라 제외.</summary>
+    public static bool IsSupportedUrl(string? text)
     {
         if (string.IsNullOrWhiteSpace(text)) return false;
         var t = text.Trim();
