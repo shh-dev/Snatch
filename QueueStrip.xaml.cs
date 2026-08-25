@@ -214,9 +214,9 @@ public partial class QueueStrip : Window
         // 붙여넣기(Ctrl+V) 하면 사라짐
         if (ctrl && (GetAsyncKeyState(VK_V) & 0x8000) != 0) { CloseStrip(); return; }
 
-        // E (단독) → 편집 열기
+        // Ctrl+E → 편집 열기
         bool e = (GetAsyncKeyState(VK_E) & 0x8000) != 0;
-        if (e && !_eDown && !ctrl) { _eDown = true; OnEdit?.Invoke(); return; }
+        if (e && ctrl && !_eDown) { _eDown = true; OnEdit?.Invoke(); return; }
         if (!e) _eDown = false;
 
         MoveToCursor();

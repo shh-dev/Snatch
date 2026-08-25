@@ -325,33 +325,48 @@ public partial class AnnotationWindow : Window
     // ---- text ----
     private void PlaceTextBox(Point at)
     {
+        var fg = ContrastOn(_color.Color);
+        double fs = 14 + _strokeW * 3;
+        // 칩 배경 위에서 입력
+        var host = new System.Windows.Controls.Border
+        {
+            Background = _color, CornerRadius = new CornerRadius(6), Padding = new Thickness(8, 3, 8, 3),
+        };
         var tb = new TextBox
         {
-            Background = Brushes.Transparent, BorderThickness = new Thickness(0), Foreground = _color,
-            FontSize = 14 + _strokeW * 3, FontWeight = FontWeights.Bold, MinWidth = 40,
-            CaretBrush = _color, AcceptsReturn = false,
+            Background = Brushes.Transparent, BorderThickness = new Thickness(0), Foreground = fg,
+            FontSize = fs, FontWeight = FontWeights.Bold, MinWidth = 30, CaretBrush = fg, AcceptsReturn = false,
         };
-        Canvas.SetLeft(tb, at.X); Canvas.SetTop(tb, at.Y);
-        Surface.Children.Add(tb);
+        host.Child = tb;
+        Canvas.SetLeft(host, at.X); Canvas.SetTop(host, at.Y);
+        Surface.Children.Add(host);
         tb.Loaded += (_, _) => tb.Focus();
-        tb.KeyDown += (_, ke) => { if (ke.Key == System.Windows.Input.Key.Enter || ke.Key == System.Windows.Input.Key.Escape) FinalizeText(tb, at); };
-        tb.LostFocus += (_, _) => FinalizeText(tb, at);
+        tb.KeyDown += (_, ke) => { if (ke.Key == System.Windows.Input.Key.Enter || ke.Key == System.Windows.Input.Key.Escape) FinalizeText(host, tb, at, fg, fs); };
+        tb.LostFocus += (_, _) => FinalizeText(host, tb, at, fg, fs);
     }
 
-    private void FinalizeText(TextBox tb, Point at)
+    private void FinalizeText(System.Windows.Controls.Border host, TextBox tb, Point at, Brush fg, double fs)
     {
-        if (!Surface.Children.Contains(tb)) return;
-        Surface.Children.Remove(tb);
+        if (!Surface.Children.Contains(host)) return;
+        Surface.Children.Remove(host);
         var text = tb.Text.Trim();
         if (text.Length == 0) return;
-        var block = new TextBlock
+        // 칩: 둥근 색배경 + 대비색 글자
+        var chip = new System.Windows.Controls.Border
         {
-            Text = text, Foreground = tb.Foreground, FontSize = tb.FontSize, FontWeight = FontWeights.Bold,
-            TextWrapping = TextWrapping.Wrap, MaxWidth = _dispW,
+            Background = _color, CornerRadius = new CornerRadius(6), Padding = new Thickness(8, 3, 8, 3),
+            Child = new TextBlock { Text = text, Foreground = fg, FontSize = fs, FontWeight = FontWeights.Bold, TextWrapping = TextWrapping.Wrap },
+            MaxWidth = _dispW,
         };
-        Canvas.SetLeft(block, at.X); Canvas.SetTop(block, at.Y);
-        Surface.Children.Add(block);
-        _added.Add(block);
+        Canvas.SetLeft(chip, at.X); Canvas.SetTop(chip, at.Y);
+        Surface.Children.Add(chip);
+        _added.Add(chip);
+    }
+
+    private static Brush ContrastOn(Color bg)
+    {
+        double lum = 0.299 * bg.R + 0.587 * bg.G + 0.114 * bg.B;
+        return lum > 140 ? Brushes.Black : Brushes.White;
     }
 
     private Point Clamp(Point p) => new(Math.Clamp(p.X, 0, _dispW), Math.Clamp(p.Y, 0, _dispH));
