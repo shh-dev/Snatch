@@ -30,6 +30,7 @@
   <ItemGroup>
     <Resource Include="Multiply.ps" />
     <None Remove="Multiply.hlsl" />
+    <Resource Include="icons\*.png" />
   </ItemGroup>
 
 </Project>

@@ -30,7 +30,6 @@ public partial class QueueStrip : Window
     /// <summary>E 키(칩 떠있을 때) → 편집 열기.</summary>
     public Action? OnEdit { get; set; }
 
-    private readonly DispatcherTimer _follow;
     private readonly DispatcherTimer _previewTimer;   // auto-hides the newest-item preview box (short)
     private readonly DispatcherTimer _chipTimer;      // auto-hides the whole strip (longer)
     private readonly DispatcherTimer _maxLifeTimer;   // hard cap — always closes, even in keep-until-paste
@@ -42,8 +41,6 @@ public partial class QueueStrip : Window
     public QueueStrip()
     {
         InitializeComponent();
-        _follow = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(28) };
-        _follow.Tick += (_, _) => OnTick();
         _previewTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(PreviewMs) };
         _previewTimer.Tick += (_, _) =>
         {
@@ -203,11 +200,11 @@ public partial class QueueStrip : Window
         { _dpiX = ct.TransformToDevice.M11; _dpiY = ct.TransformToDevice.M22; }
 
         MoveToCursor();
-        _follow.Start();
+        CompositionTarget.Rendering += OnFrame;   // 모니터 refresh rate로 커서 추종(고주사율)
         BeginAnimation(OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(120)));
     }
 
-    private void OnTick()
+    private void OnFrame(object? sender, EventArgs ev)
     {
         bool ctrl = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
 
@@ -242,9 +239,10 @@ public partial class QueueStrip : Window
         SetWindowPos(_hwnd, HWND_TOPMOST, x, y, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOZORDER);
     }
 
+    private bool _closed;
     public void CloseStrip()
     {
-        _follow.Stop();
+        if (!_closed) { CompositionTarget.Rendering -= OnFrame; _closed = true; }
         _previewTimer.Stop();
         _chipTimer.Stop();
         _maxLifeTimer.Stop();

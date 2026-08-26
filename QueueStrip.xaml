@@ -7,23 +7,16 @@
         SizeToContent="WidthAndHeight" Opacity="0">
     <StackPanel Margin="6" HorizontalAlignment="Left">
         <!-- 박스 1: 미니 썸네일 칩 줄 -->
-        <Border x:Name="ChipBox" CornerRadius="8" Background="#E61E1E24"
+        <Border x:Name="ChipBox" CornerRadius="8" Background="#F21E1E24"
                 BorderBrush="#33FF33" BorderThickness="1.5" Padding="5"
                 HorizontalAlignment="Left">
-            <Border.Effect>
-                <DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.4" Color="Black"/>
-            </Border.Effect>
             <StackPanel x:Name="Tiles" Orientation="Horizontal"/>
         </Border>
 
         <!-- 박스 2: 최신 항목 내용 프리뷰 -->
         <Border x:Name="PreviewBox" Margin="0,6,0,0" Visibility="Collapsed"
-                CornerRadius="8" Background="#E61E1E24"
-                BorderBrush="#33FF33" BorderThickness="1" Padding="8"
-                HorizontalAlignment="Left">
-            <Border.Effect>
-                <DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.4" Color="Black"/>
-            </Border.Effect>
-        </Border>
+                CornerRadius="8" Background="#F21E1E24" Padding="8"
+                BorderBrush="#33FF33" BorderThickness="1"
+                HorizontalAlignment="Left"/>
     </StackPanel>
 </Window>

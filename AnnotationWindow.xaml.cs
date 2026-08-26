@@ -28,12 +28,30 @@ public partial class AnnotationWindow : Window
     private Canvas? _hlLayer;   // highlighter strokes, multiply-blended over the image
     private BitmapSource _srcBmp = null!;   // full-res source for blur/mosaic
     private const double Margin = 140;      // 이미지 둘레 여백(마크업 여유)
+    private Rectangle _bg = null!;          // 여백 배경 (성장 시 리사이즈)
+
+    /// <summary>내용이 오른쪽/아래로 넘치면 캔버스 확장.</summary>
+    private void GrowRightBottom(double x, double y)
+    {
+        const double pad = 40;
+        bool grew = false;
+        if (x + pad > Surface.Width) { Surface.Width = x + pad; grew = true; }
+        if (y + pad > Surface.Height) { Surface.Height = y + pad; grew = true; }
+        if (grew)
+        {
+            _bg.Width = Surface.Width; _bg.Height = Surface.Height;
+            if (_spotlight != null) RebuildSpotlight();
+        }
+    }
 
     private Point _start;
     private bool _dragging;
     private Shape? _live;              // shape being dragged
     private Image? _blurLive;          // mosaic being dragged
     private bool _hatch;               // 사각형/원 빗금 채우기
+    private double _fontSize = 12;     // 텍스트/콜아웃 폰트
+    private bool _escArmed;            // ESC 두 번 확인
+    private TextAlignment _align = TextAlignment.Left;
     private ShapePath? _spotlight;         // single dim overlay, multiple bright holes
     private readonly List<Rect> _holes = new();
     private int _dimTransPct = 15;         // 딤 투명도 % (휠 5%단위, 10~100)
@@ -62,9 +80,9 @@ public partial class AnnotationWindow : Window
         Surface.Width = _dispW + 2 * Margin; Surface.Height = _dispH + 2 * Margin;
 
         // 배경(여백 포함) — index 0
-        var bg = new Rectangle { Width = Surface.Width, Height = Surface.Height, Fill = new SolidColorBrush(Color.FromRgb(0x2B, 0x2B, 0x33)) };
-        Canvas.SetLeft(bg, 0); Canvas.SetTop(bg, 0);
-        Surface.Children.Insert(0, bg);
+        _bg = new Rectangle { Width = Surface.Width, Height = Surface.Height, Fill = new SolidColorBrush(Color.FromRgb(0x2B, 0x2B, 0x33)) };
+        Canvas.SetLeft(_bg, 0); Canvas.SetTop(_bg, 0);
+        Surface.Children.Insert(0, _bg);
 
         // 이미지 — 여백만큼 오프셋
         BaseImage.Source = bmp; BaseImage.Width = _dispW; BaseImage.Height = _dispH;
@@ -79,9 +97,59 @@ public partial class AnnotationWindow : Window
         Canvas.SetLeft(_hlLayer, Margin); Canvas.SetTop(_hlLayer, Margin);
         Surface.Children.Add(_hlLayer);
 
+        MaxWidth = wa.Width; MaxHeight = wa.Height;   // 넘치면 스크롤
+
         BuildSwatches();
         SelectWidth(3);
+        SetFont(12);
+        BtnAL.Content = AlignIcon(HorizontalAlignment.Left);
+        BtnAC.Content = AlignIcon(HorizontalAlignment.Center);
+        BtnAR.Content = AlignIcon(HorizontalAlignment.Right);
+        SelectAlign(TextAlignment.Left);
         SelectTool("arrow");
+    }
+
+    private bool _fontSync;
+    private void OnFontBox(object sender, RoutedEventArgs e)
+    {
+        if (_fontSync) return;
+        var s = FontBox.Text ?? "";
+        var digits = new string(s.Where(char.IsDigit).ToArray());
+        if (double.TryParse(digits, out var f)) _fontSize = Math.Clamp(f, 8, 200);
+    }
+
+    private void OnFontStep(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button b && double.TryParse(b.Tag as string, out var d)) SetFont(_fontSize + d);
+    }
+
+    private void SetFont(double f)
+    {
+        _fontSize = Math.Clamp(f, 8, 200);
+        _fontSync = true; FontBox.Text = ((int)_fontSize).ToString(); _fontSync = false;
+    }
+
+    private static UIElement AlignIcon(HorizontalAlignment ha)
+    {
+        var sp = new StackPanel { Width = 16 };
+        foreach (var w in new double[] { 14, 9, 14 })
+            sp.Children.Add(new Rectangle { Height = 2, Width = w, Fill = Brushes.White, Margin = new Thickness(0, 1.5, 0, 1.5), HorizontalAlignment = ha });
+        return sp;
+    }
+
+    private void OnAlign(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button b && Enum.TryParse<TextAlignment>(b.Tag as string, out var al)) SelectAlign(al);
+    }
+
+    private void SelectAlign(TextAlignment al)
+    {
+        _align = al;
+        var a = new SolidColorBrush(Color.FromRgb(0x2D, 0x6C, 0xDF));
+        var n = new SolidColorBrush(Color.FromRgb(0x2A, 0x2A, 0x33));
+        BtnAL.Background = al == TextAlignment.Left ? a : n;
+        BtnAC.Background = al == TextAlignment.Center ? a : n;
+        BtnAR.Background = al == TextAlignment.Right ? a : n;
     }
 
     private static readonly (string hex, byte r, byte g, byte b)[] Palette =
@@ -97,7 +165,7 @@ public partial class AnnotationWindow : Window
             var col = Color.FromRgb(c.r, c.g, c.b);
             var b = new System.Windows.Controls.Border
             {
-                Width = 20, Height = 20, CornerRadius = new CornerRadius(4), Margin = new Thickness(0, 0, 4, 0),
+                Width = 16, Height = 16, CornerRadius = new CornerRadius(3), Margin = new Thickness(0, 0, 3, 0),
                 Background = new SolidColorBrush(col), Cursor = System.Windows.Input.Cursors.Hand,
                 BorderBrush = Brushes.Transparent, BorderThickness = new Thickness(2),
                 Tag = col,
@@ -173,7 +241,7 @@ public partial class AnnotationWindow : Window
         _tool = t;
         var active = new SolidColorBrush(Color.FromRgb(0x2D, 0x6C, 0xDF));
         var normal = new SolidColorBrush(Color.FromRgb(0x2A, 0x2A, 0x33));
-        foreach (var (btn, tag) in new[] { (BtnSpot, "spot"), (BtnArrow, "arrow"), (BtnRect, "rect"), (BtnEll, "ellipse"), (BtnPen, "pen"), (BtnHl, "hl"), (BtnBlur, "blur"), (BtnText, "text"), (BtnNum, "num") })
+        foreach (var (btn, tag) in new[] { (BtnSpot, "spot"), (BtnArrow, "arrow"), (BtnRect, "rect"), (BtnEll, "ellipse"), (BtnPen, "pen"), (BtnHl, "hl"), (BtnBlur, "blur"), (BtnText, "text"), (BtnCallout, "callout"), (BtnNum, "num") })
             btn.Background = tag == t ? active : normal;
     }
 
@@ -186,14 +254,23 @@ public partial class AnnotationWindow : Window
         e.Handled = true;
     }
 
-    private void ShowDimToast()
+    private void ShowDimToast() => FlashToast($"투명도 {_dimTransPct}%");
+
+    private void FlashToast(string text)
     {
-        DimToastText.Text = $"투명도 {_dimTransPct}%";
+        DimToastText.Text = text;
         var kf = new System.Windows.Media.Animation.DoubleAnimationUsingKeyFrames();
         kf.KeyFrames.Add(new System.Windows.Media.Animation.LinearDoubleKeyFrame(1, System.Windows.Media.Animation.KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(80))));
         kf.KeyFrames.Add(new System.Windows.Media.Animation.LinearDoubleKeyFrame(1, System.Windows.Media.Animation.KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(800))));
         kf.KeyFrames.Add(new System.Windows.Media.Animation.LinearDoubleKeyFrame(0, System.Windows.Media.Animation.KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(1150))));
         DimToast.BeginAnimation(OpacityProperty, kf);
+    }
+
+    private void OnToggleOpts(object sender, RoutedEventArgs e)
+    {
+        bool show = OptionsPanel.Visibility != Visibility.Visible;
+        OptionsPanel.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        BtnOpts.Background = show ? new SolidColorBrush(Color.FromRgb(0x2D, 0x6C, 0xDF)) : new SolidColorBrush(Color.FromRgb(0x2A, 0x2A, 0x33));
     }
 
     private void OnTitleDrag(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -205,6 +282,7 @@ public partial class AnnotationWindow : Window
     private void OnDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         _start = e.GetPosition(Surface);
+        GrowRightBottom(_start.X, _start.Y);
 
         if (_tool == "num") { PlaceNumber(_start); return; }
         if (_tool == "text") { PlaceTextBox(_start); return; }
@@ -254,6 +332,13 @@ public partial class AnnotationWindow : Window
             _live = new Line { Stroke = Accent, StrokeThickness = Stroke + 1, StrokeStartLineCap = PenLineCap.Round };
             Surface.Children.Add(_live);
         }
+        else if (_tool == "callout")
+        {
+            var ln = new Line { Stroke = Accent, StrokeThickness = Stroke, StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round };
+            ln.X1 = _start.X; ln.Y1 = _start.Y; ln.X2 = _start.X; ln.Y2 = _start.Y;
+            _live = ln;
+            Surface.Children.Add(ln);
+        }
         else if (_tool == "spot")
         {
             EnsureSpotlight();
@@ -264,7 +349,9 @@ public partial class AnnotationWindow : Window
     private void OnMove(object sender, System.Windows.Input.MouseEventArgs e)
     {
         if (!_dragging) return;
-        var p = Clamp(e.GetPosition(Surface));
+        var raw = e.GetPosition(Surface);
+        GrowRightBottom(raw.X, raw.Y);
+        var p = Clamp(raw);
 
         if (_tool == "blur")
         {
@@ -299,6 +386,10 @@ public partial class AnnotationWindow : Window
         {
             ln.X1 = _start.X; ln.Y1 = _start.Y; ln.X2 = p.X; ln.Y2 = p.Y;
         }
+        else if (_tool == "callout" && _live is Line cl)
+        {
+            cl.X2 = p.X; cl.Y2 = p.Y;
+        }
         else if (_tool == "spot" && _holes.Count > 0)
         {
             _holes[^1] = new Rect(new Point(Math.Min(_start.X, p.X), Math.Min(_start.Y, p.Y)),
@@ -311,7 +402,9 @@ public partial class AnnotationWindow : Window
     {
         if (!_dragging) return;
         _dragging = false;
-        var p = Clamp(e.GetPosition(Surface));
+        var raw = e.GetPosition(Surface);
+        GrowRightBottom(raw.X, raw.Y);
+        var p = Clamp(raw);
 
         if (_tool == "arrow" && _live is Line ln)
         {
@@ -353,7 +446,61 @@ public partial class AnnotationWindow : Window
             else if (_blurLive != null) Surface.Children.Remove(_blurLive);
             _blurLive = null;
         }
+        else if (_tool == "callout" && _live is Line cl)
+        {
+            if (Dist(_start, p) < 6) { Surface.Children.Remove(cl); _live = null; return; }
+            cl.X2 = p.X; cl.Y2 = p.Y;
+            var dot = new Ellipse { Width = 8, Height = 8, Fill = Accent };
+            Canvas.SetLeft(dot, _start.X - 4); Canvas.SetTop(dot, _start.Y - 4);
+            Surface.Children.Add(dot);
+            PlaceCalloutText(cl, dot, new Point(p.X, p.Y));
+        }
+
+        bool rectDone = _tool == "rect" && _live is Rectangle rc && rc.Width >= 4 && rc.Height >= 4;
         _live = null;
+        if (rectDone && AutoCalloutChk.IsChecked == true) SelectTool("callout");   // 네모 그린 뒤 콜아웃 자동
+    }
+
+    private void PlaceCalloutText(Line line, Ellipse dot, Point at)
+    {
+        var fg = ContrastOn(_color.Color);
+        double fs = _fontSize;
+        var align = _align;
+        var host = new System.Windows.Controls.Border
+        {
+            Background = _color, CornerRadius = new CornerRadius(6), Padding = new Thickness(8, 3, 8, 3),
+        };
+        var tb = new TextBox
+        {
+            Background = Brushes.Transparent, BorderThickness = new Thickness(0), Foreground = fg,
+            FontSize = fs, FontWeight = FontWeights.Bold, MinWidth = 30, CaretBrush = fg,
+            AcceptsReturn = true, TextAlignment = align,
+        };
+        host.Child = tb;
+        Canvas.SetLeft(host, at.X); Canvas.SetTop(host, at.Y);
+        Surface.Children.Add(host);
+        host.SizeChanged += (_, _) => GrowRightBottom(at.X + host.ActualWidth, at.Y + host.ActualHeight);   // 입력 중 실시간 확장
+        tb.Loaded += (_, _) => tb.Focus();
+
+        void Done()
+        {
+            if (!Surface.Children.Contains(host)) return;
+            Surface.Children.Remove(host);
+            var text = tb.Text.Trim();
+            if (text.Length == 0) { Surface.Children.Remove(line); Surface.Children.Remove(dot); return; }
+            var chip = new System.Windows.Controls.Border
+            {
+                Background = _color, CornerRadius = new CornerRadius(6), Padding = new Thickness(8, 3, 8, 3),
+                Child = new TextBlock { Text = text, Foreground = fg, FontSize = fs, FontWeight = FontWeights.Bold, TextWrapping = TextWrapping.Wrap, TextAlignment = align },
+            };
+            Canvas.SetLeft(chip, at.X); Canvas.SetTop(chip, at.Y);
+            Surface.Children.Add(chip);
+            _added.Add(new GroupMarker(new UIElement[] { line, dot, chip }));   // undo = 셋 다
+            AttachChipEdit(chip);
+            chip.Loaded += (_, _) => GrowRightBottom(at.X + chip.ActualWidth, at.Y + chip.ActualHeight);
+        }
+        tb.KeyDown += (_, ke) => { if (ke.Key == System.Windows.Input.Key.Escape || (ke.Key == System.Windows.Input.Key.Enter && (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) != 0)) Done(); };
+        tb.LostFocus += (_, _) => Done();
     }
 
     // ---- blur / mosaic ----
@@ -384,8 +531,7 @@ public partial class AnnotationWindow : Window
     private void PlaceTextBox(Point at)
     {
         var fg = ContrastOn(_color.Color);
-        double fs = 14 + _strokeW * 3;
-        // 칩 배경 위에서 입력
+        double fs = _fontSize;
         var host = new System.Windows.Controls.Border
         {
             Background = _color, CornerRadius = new CornerRadius(6), Padding = new Thickness(8, 3, 8, 3),
@@ -393,32 +539,77 @@ public partial class AnnotationWindow : Window
         var tb = new TextBox
         {
             Background = Brushes.Transparent, BorderThickness = new Thickness(0), Foreground = fg,
-            FontSize = fs, FontWeight = FontWeights.Bold, MinWidth = 30, CaretBrush = fg, AcceptsReturn = false,
+            FontSize = fs, FontWeight = FontWeights.Bold, MinWidth = 30, CaretBrush = fg,
+            AcceptsReturn = true, TextAlignment = _align,
         };
         host.Child = tb;
         Canvas.SetLeft(host, at.X); Canvas.SetTop(host, at.Y);
         Surface.Children.Add(host);
+        host.SizeChanged += (_, _) => GrowRightBottom(at.X + host.ActualWidth, at.Y + host.ActualHeight);   // 입력 중 실시간 확장
         tb.Loaded += (_, _) => tb.Focus();
-        tb.KeyDown += (_, ke) => { if (ke.Key == System.Windows.Input.Key.Enter || ke.Key == System.Windows.Input.Key.Escape) FinalizeText(host, tb, at, fg, fs); };
-        tb.LostFocus += (_, _) => FinalizeText(host, tb, at, fg, fs);
+        tb.KeyDown += (_, ke) => { if (ke.Key == System.Windows.Input.Key.Escape || (ke.Key == System.Windows.Input.Key.Enter && (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) != 0)) FinalizeText(host, tb, at, fg, fs, _align); };
+        tb.LostFocus += (_, _) => FinalizeText(host, tb, at, fg, fs, _align);
     }
 
-    private void FinalizeText(System.Windows.Controls.Border host, TextBox tb, Point at, Brush fg, double fs)
+    private void FinalizeText(System.Windows.Controls.Border host, TextBox tb, Point at, Brush fg, double fs, TextAlignment align)
     {
         if (!Surface.Children.Contains(host)) return;
         Surface.Children.Remove(host);
         var text = tb.Text.Trim();
         if (text.Length == 0) return;
-        // 칩: 둥근 색배경 + 대비색 글자
         var chip = new System.Windows.Controls.Border
         {
             Background = _color, CornerRadius = new CornerRadius(6), Padding = new Thickness(8, 3, 8, 3),
-            Child = new TextBlock { Text = text, Foreground = fg, FontSize = fs, FontWeight = FontWeights.Bold, TextWrapping = TextWrapping.Wrap },
-            MaxWidth = _dispW,
+            Child = new TextBlock { Text = text, Foreground = fg, FontSize = fs, FontWeight = FontWeights.Bold, TextWrapping = TextWrapping.Wrap, TextAlignment = align },
         };
         Canvas.SetLeft(chip, at.X); Canvas.SetTop(chip, at.Y);
         Surface.Children.Add(chip);
         _added.Add(chip);
+        AttachChipEdit(chip);
+        chip.Loaded += (_, _) => GrowRightBottom(at.X + chip.ActualWidth, at.Y + chip.ActualHeight);
+    }
+
+    /// <summary>칩(텍스트/콜아웃) 더블클릭 → 인플레이스 텍스트 편집.</summary>
+    private void AttachChipEdit(System.Windows.Controls.Border chip)
+    {
+        chip.MouseLeftButtonDown += (_, e) =>
+        {
+            if (e.ClickCount < 2) return;
+            e.Handled = true;
+            EditChip(chip);
+        };
+    }
+
+    private void EditChip(System.Windows.Controls.Border chip)
+    {
+        if (chip.Child is not TextBlock tbk) return;
+        string orig = tbk.Text;
+        var fg = tbk.Foreground; double fs = tbk.FontSize; var align = tbk.TextAlignment;
+        var tb = new TextBox
+        {
+            Text = orig, Background = Brushes.Transparent, BorderThickness = new Thickness(0),
+            Foreground = fg, FontSize = fs, FontWeight = FontWeights.Bold, MinWidth = 30,
+            CaretBrush = fg, AcceptsReturn = true, TextAlignment = align,
+        };
+        chip.Child = tb;
+        tb.Loaded += (_, _) => { tb.Focus(); tb.SelectAll(); };
+        chip.SizeChanged += ChipGrow;
+        void ChipGrow(object? s, SizeChangedEventArgs e)
+            => GrowRightBottom(Canvas.GetLeft(chip) + chip.ActualWidth, Canvas.GetTop(chip) + chip.ActualHeight);
+
+        void Done()
+        {
+            if (chip.Child is not TextBox box) return;
+            chip.SizeChanged -= ChipGrow;
+            var t = box.Text.Trim();
+            chip.Child = new TextBlock
+            {
+                Text = t.Length > 0 ? t : orig, Foreground = fg, FontSize = fs, FontWeight = FontWeights.Bold,
+                TextWrapping = TextWrapping.Wrap, TextAlignment = align,
+            };
+        }
+        tb.KeyDown += (_, ke) => { if (ke.Key == System.Windows.Input.Key.Escape || (ke.Key == System.Windows.Input.Key.Enter && (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) != 0)) Done(); };
+        tb.LostFocus += (_, _) => Done();
     }
 
     private static Brush ContrastOn(Color bg)
@@ -489,7 +680,8 @@ public partial class AnnotationWindow : Window
         if (_added.Count == 0) return;
         var last = _added[^1];
         _added.RemoveAt(_added.Count - 1);
-        if (last is ArrowGroup.MarkerElement m) { Surface.Children.Remove(m.Line); Surface.Children.Remove(m.Head); }
+        if (last is GroupMarker gm) { foreach (var el in gm.Parts) Surface.Children.Remove(el); }
+        else if (last is ArrowGroup.MarkerElement m) { Surface.Children.Remove(m.Line); Surface.Children.Remove(m.Head); }
         else if (last is SpotMarker) { if (_holes.Count > 0) _holes.RemoveAt(_holes.Count - 1); RebuildSpotlight(); }
         else if (last is Polyline) { _hlLayer?.Children.Remove(last); Surface.Children.Remove(last); }   // 형광펜(레이어)·펜(서피스)
         else Surface.Children.Remove(last);
@@ -511,7 +703,15 @@ public partial class AnnotationWindow : Window
 
     private void OnCopy(object sender, RoutedEventArgs e)
     {
-        try { Clipboard.SetImage(RenderComposite()); Close(); } catch { }
+        try
+        {
+            Clipboard.SetImage(RenderComposite());
+            FlashToast("복사되었습니다");
+            var t = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(650) };
+            t.Tick += (_, _) => { t.Stop(); Close(); };
+            t.Start();
+        }
+        catch { }
     }
 
     private void OnSave(object sender, RoutedEventArgs e)
@@ -545,7 +745,15 @@ public partial class AnnotationWindow : Window
     private void OnKey(object sender, System.Windows.Input.KeyEventArgs e)
     {
         bool ctrl = (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Control) != 0;
-        if (e.Key == System.Windows.Input.Key.Escape) Close();
+        if (e.Key == System.Windows.Input.Key.Escape)
+        {
+            if (_escArmed) { Close(); return; }
+            _escArmed = true;
+            FlashToast("한 번 더 ESC = 닫기");
+            var t = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1600) };
+            t.Tick += (_, _) => { t.Stop(); _escArmed = false; };
+            t.Start();
+        }
         else if (ctrl && e.Key == System.Windows.Input.Key.Z) OnUndo(this, new RoutedEventArgs());
         else if (ctrl && e.Key == System.Windows.Input.Key.C) OnCopy(this, new RoutedEventArgs());
         else if (ctrl && e.Key == System.Windows.Input.Key.S) OnSave(this, new RoutedEventArgs());
@@ -554,6 +762,13 @@ public partial class AnnotationWindow : Window
 
 /// <summary>Undo token for one spotlight hole.</summary>
 public class SpotMarker : System.Windows.UIElement { }
+
+/// <summary>Undo token grouping several elements (e.g. callout line + dot + chip).</summary>
+public class GroupMarker : System.Windows.UIElement
+{
+    public System.Windows.UIElement[] Parts;
+    public GroupMarker(System.Windows.UIElement[] parts) => Parts = parts;
+}
 
 /// <summary>Ties an arrow's line + head together for single-step undo.</summary>
 public class ArrowGroup

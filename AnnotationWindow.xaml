@@ -8,9 +8,12 @@
         <Style x:Key="TbBtn" TargetType="Button">
             <Setter Property="Background" Value="#2A2A33"/>
             <Setter Property="Foreground" Value="#E8E8EC"/>
-            <Setter Property="Padding" Value="11,6"/>
-            <Setter Property="Margin" Value="0,0,4,0"/>
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Padding" Value="5,0"/>
+            <Setter Property="Margin" Value="0,0,3,3"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="MinWidth" Value="28"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="FontSize" Value="11"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="SnapsToDevicePixels" Value="True"/>
             <Setter Property="Template">
@@ -34,45 +37,17 @@
         </Style>
     </Window.Resources>
     <Border BorderBrush="#33FF33" BorderThickness="1">
-    <DockPanel>
-        <Border DockPanel.Dock="Top" Background="#FF1E1E24" Padding="8,7" MouseLeftButtonDown="OnTitleDrag">
-            <StackPanel>
-                <StackPanel Orientation="Horizontal">
-                    <Button x:Name="BtnSpot"  Content="🔦 스포트라이트" Style="{StaticResource TbBtn}" Click="OnTool" Tag="spot"/>
-                    <Button x:Name="BtnArrow" Content="↗ 화살표"        Style="{StaticResource TbBtn}" Click="OnTool" Tag="arrow"/>
-                    <Button x:Name="BtnRect"  Content="▭ 사각형"        Style="{StaticResource TbBtn}" Click="OnTool" Tag="rect"/>
-                    <Button x:Name="BtnEll"   Content="◯ 원"           Style="{StaticResource TbBtn}" Click="OnTool" Tag="ellipse"/>
-                    <Button x:Name="BtnPen"   Content="✏ 펜"           Style="{StaticResource TbBtn}" Click="OnTool" Tag="pen"/>
-                    <Button x:Name="BtnHl"    Content="🖍 형광펜"        Style="{StaticResource TbBtn}" Click="OnTool" Tag="hl"/>
-                    <Button x:Name="BtnBlur"  Content="🔒 블러"         Style="{StaticResource TbBtn}" Click="OnTool" Tag="blur"/>
-                    <Button x:Name="BtnText"  Content="🅰 텍스트"        Style="{StaticResource TbBtn}" Click="OnTool" Tag="text"/>
-                    <Button x:Name="BtnNum"   Content="① 넘버"          Style="{StaticResource TbBtn}" Click="OnTool" Tag="num"/>
-                    <Border Width="1" Background="#33FFFFFF" Margin="6,3"/>
-                    <Button Content="↶" ToolTip="실행취소 (Ctrl+Z)" Style="{StaticResource TbBtn}" Click="OnUndo"/>
-                    <Button Content="⧉" ToolTip="복사 (Ctrl+C)"    Style="{StaticResource TbBtn}" Click="OnCopy"/>
-                    <Button Content="💾" ToolTip="저장 (Ctrl+S)"   Style="{StaticResource TbBtn}" Click="OnSave"/>
-                    <Button Content="✕" ToolTip="닫기 (Esc)"       Style="{StaticResource TbBtn}" Click="OnClose"/>
-                </StackPanel>
-                <StackPanel x:Name="StyleRow" Orientation="Horizontal" Margin="0,7,0,0">
-                    <TextBlock Text="색상" Foreground="#AAB0B8" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                    <StackPanel x:Name="Swatches" Orientation="Horizontal"/>
-                    <Border Width="1" Background="#33FFFFFF" Margin="8,3"/>
-                    <TextBlock Text="굵기" Foreground="#AAB0B8" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                    <Button x:Name="BtnW1" Content="ᐧ 얇게"  Style="{StaticResource TbBtn}" Click="OnWidth" Tag="2"/>
-                    <Button x:Name="BtnW2" Content="― 보통"  Style="{StaticResource TbBtn}" Click="OnWidth" Tag="4"/>
-                    <Button x:Name="BtnW3" Content="▬ 굵게"  Style="{StaticResource TbBtn}" Click="OnWidth" Tag="7"/>
-                    <Border Width="1" Background="#33FFFFFF" Margin="8,3"/>
-                    <Button x:Name="BtnHatch" Content="▨ 빗금채우기" Style="{StaticResource TbBtn}" Click="OnHatch"/>
-                </StackPanel>
-            </StackPanel>
-        </Border>
+    <Grid>
+        <!-- 캔버스 (채움) -->
         <Border Padding="10" Background="#FF15151A">
             <Grid>
-                <Canvas x:Name="Surface" Background="Transparent"
-                        MouseLeftButtonDown="OnDown" MouseMove="OnMove" MouseLeftButtonUp="OnUp"
-                        MouseWheel="OnWheel" ClipToBounds="True">
-                    <Image x:Name="BaseImage" SnapsToDevicePixels="True"/>
-                </Canvas>
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                    <Canvas x:Name="Surface" Background="Transparent" HorizontalAlignment="Left" VerticalAlignment="Top"
+                            MouseLeftButtonDown="OnDown" MouseMove="OnMove" MouseLeftButtonUp="OnUp"
+                            MouseWheel="OnWheel" ClipToBounds="True">
+                        <Image x:Name="BaseImage" SnapsToDevicePixels="True"/>
+                    </Canvas>
+                </ScrollViewer>
                 <Border x:Name="DimToast" Opacity="0" IsHitTestVisible="False"
                         HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,16,0,0"
                         Background="#E6101418" CornerRadius="8" Padding="14,8"
@@ -81,6 +56,65 @@
                 </Border>
             </Grid>
         </Border>
-    </DockPanel>
+
+        <!-- 도구 플로팅 패널 (하단 중앙) -->
+        <Border Background="#F21E1E24" CornerRadius="10" Padding="8,6"
+                HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,22"
+                BorderBrush="#33FF33" BorderThickness="1" MouseLeftButtonDown="OnTitleDrag">
+            <StackPanel>
+                <StackPanel Orientation="Horizontal">
+                    <Button x:Name="BtnSpot"  Width="42" Height="42" ToolTip="스포트라이트" Style="{StaticResource TbBtn}" Click="OnTool" Tag="spot"><StackPanel><Image Source="/icons/spot.png" Width="18" Height="18"/><TextBlock Text="스포트" FontSize="8" Foreground="#AAB0B8" HorizontalAlignment="Center" Margin="0,1,0,0"/></StackPanel></Button>
+                    <Button x:Name="BtnArrow" Width="42" Height="42" ToolTip="화살표" Style="{StaticResource TbBtn}" Click="OnTool" Tag="arrow"><StackPanel><Image Source="/icons/arrow.png" Width="18" Height="18"/><TextBlock Text="화살표" FontSize="8" Foreground="#AAB0B8" HorizontalAlignment="Center" Margin="0,1,0,0"/></StackPanel></Button>
+                    <Button x:Name="BtnRect"  Width="42" Height="42" ToolTip="사각형" Style="{StaticResource TbBtn}" Click="OnTool" Tag="rect"><StackPanel><Image Source="/icons/rect.png" Width="18" Height="18"/><TextBlock Text="사각형" FontSize="8" Foreground="#AAB0B8" HorizontalAlignment="Center" Margin="0,1,0,0"/></StackPanel></Button>
+                    <Button x:Name="BtnEll"   Width="42" Height="42" ToolTip="원" Style="{StaticResource TbBtn}" Click="OnTool" Tag="ellipse"><StackPanel><Image Source="/icons/ellipse.png" Width="18" Height="18"/><TextBlock Text="원" FontSize="8" Foreground="#AAB0B8" HorizontalAlignment="Center" Margin="0,1,0,0"/></StackPanel></Button>
+                    <Button x:Name="BtnPen"   Width="42" Height="42" ToolTip="펜" Style="{StaticResource TbBtn}" Click="OnTool" Tag="pen"><StackPanel><Image Source="/icons/pen.png" Width="18" Height="18"/><TextBlock Text="펜" FontSize="8" Foreground="#AAB0B8" HorizontalAlignment="Center" Margin="0,1,0,0"/></StackPanel></Button>
+                    <Button x:Name="BtnHl"    Width="42" Height="42" ToolTip="형광펜" Style="{StaticResource TbBtn}" Click="OnTool" Tag="hl"><StackPanel><Image Source="/icons/hl.png" Width="18" Height="18"/><TextBlock Text="형광펜" FontSize="8" Foreground="#AAB0B8" HorizontalAlignment="Center" Margin="0,1,0,0"/></StackPanel></Button>
+                    <Button x:Name="BtnBlur"  Width="42" Height="42" ToolTip="블러" Style="{StaticResource TbBtn}" Click="OnTool" Tag="blur"><StackPanel><Image Source="/icons/blur.png" Width="18" Height="18"/><TextBlock Text="블러" FontSize="8" Foreground="#AAB0B8" HorizontalAlignment="Center" Margin="0,1,0,0"/></StackPanel></Button>
+                    <Button x:Name="BtnText"  Width="42" Height="42" ToolTip="텍스트" Style="{StaticResource TbBtn}" Click="OnTool" Tag="text"><StackPanel><Image Source="/icons/text.png" Width="18" Height="18"/><TextBlock Text="텍스트" FontSize="8" Foreground="#AAB0B8" HorizontalAlignment="Center" Margin="0,1,0,0"/></StackPanel></Button>
+                    <Button x:Name="BtnCallout" Width="42" Height="42" ToolTip="콜아웃" Style="{StaticResource TbBtn}" Click="OnTool" Tag="callout"><StackPanel><Image Source="/icons/callout.png" Width="18" Height="18"/><TextBlock Text="콜아웃" FontSize="8" Foreground="#AAB0B8" HorizontalAlignment="Center" Margin="0,1,0,0"/></StackPanel></Button>
+                    <Button x:Name="BtnNum"   Width="42" Height="42" ToolTip="넘버" Style="{StaticResource TbBtn}" Click="OnTool" Tag="num"><StackPanel><Image Source="/icons/num.png" Width="18" Height="18"/><TextBlock Text="넘버" FontSize="8" Foreground="#AAB0B8" HorizontalAlignment="Center" Margin="0,1,0,0"/></StackPanel></Button>
+                    <Border Width="1" Background="#33FFFFFF" Margin="6,2"/>
+                    <Button Width="42" Height="42" ToolTip="실행취소 (Ctrl+Z)" Style="{StaticResource TbBtn}" Click="OnUndo"><StackPanel><Image Source="/icons/undo.png" Width="18" Height="18"/><TextBlock Text="취소" FontSize="8" Foreground="#AAB0B8" HorizontalAlignment="Center" Margin="0,1,0,0"/></StackPanel></Button>
+                    <Button Width="42" Height="42" ToolTip="복사 (Ctrl+C)" Style="{StaticResource TbBtn}" Click="OnCopy"><StackPanel><Image Source="/icons/copy.png" Width="18" Height="18"/><TextBlock Text="복사" FontSize="8" Foreground="#AAB0B8" HorizontalAlignment="Center" Margin="0,1,0,0"/></StackPanel></Button>
+                    <Button Width="42" Height="42" ToolTip="저장 (Ctrl+S)" Style="{StaticResource TbBtn}" Click="OnSave"><StackPanel><Image Source="/icons/save.png" Width="18" Height="18"/><TextBlock Text="저장" FontSize="8" Foreground="#AAB0B8" HorizontalAlignment="Center" Margin="0,1,0,0"/></StackPanel></Button>
+                    <Button Width="42" Height="42" ToolTip="닫기 (Esc)" Style="{StaticResource TbBtn}" Click="OnClose"><StackPanel><Image Source="/icons/close.png" Width="18" Height="18"/><TextBlock Text="닫기" FontSize="8" Foreground="#AAB0B8" HorizontalAlignment="Center" Margin="0,1,0,0"/></StackPanel></Button>
+                    <Border Width="1" Background="#33FFFFFF" Margin="6,2"/>
+                    <Button x:Name="BtnOpts" Width="42" Height="42" ToolTip="스타일 옵션" Style="{StaticResource TbBtn}" Click="OnToggleOpts"><StackPanel><Image Source="/icons/opts.png" Width="18" Height="18"/><TextBlock Text="옵션" FontSize="8" Foreground="#AAB0B8" HorizontalAlignment="Center" Margin="0,1,0,0"/></StackPanel></Button>
+                </StackPanel>
+              <StackPanel x:Name="OptionsPanel" Visibility="Collapsed">
+                <StackPanel x:Name="StyleRow" Orientation="Horizontal" Margin="0,5,0,0">
+                    <TextBlock Text="색상" Foreground="#AAB0B8" FontSize="10" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                    <StackPanel x:Name="Swatches" Orientation="Horizontal"/>
+                    <Border Width="1" Background="#33FFFFFF" Margin="8,3"/>
+                    <TextBlock Text="굵기" Foreground="#AAB0B8" FontSize="10" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                    <Button x:Name="BtnW1" Content="▁" FontSize="13" ToolTip="얇게" Style="{StaticResource TbBtn}" Click="OnWidth" Tag="2"/>
+                    <Button x:Name="BtnW2" Content="―" FontSize="13" ToolTip="보통" Style="{StaticResource TbBtn}" Click="OnWidth" Tag="4"/>
+                    <Button x:Name="BtnW3" Content="▬" FontSize="13" ToolTip="굵게" Style="{StaticResource TbBtn}" Click="OnWidth" Tag="7"/>
+                    <Border Width="1" Background="#33FFFFFF" Margin="8,3"/>
+                    <Button x:Name="BtnHatch" Content="▨" FontSize="13" ToolTip="빗금 채우기" Style="{StaticResource TbBtn}" Click="OnHatch"/>
+                    <Border Width="1" Background="#33FFFFFF" Margin="8,3"/>
+                    <CheckBox x:Name="AutoCalloutChk" Content="네모→콜아웃" Foreground="#E8E8EC" VerticalAlignment="Center" FontSize="11"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
+                    <TextBlock Text="폰트" Foreground="#AAB0B8" FontSize="10" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                    <Button x:Name="BtnFMinus" Content="−" Style="{StaticResource TbBtn}" Click="OnFontStep" Tag="-2"/>
+                    <ComboBox x:Name="FontBox" Width="52" Height="24" IsEditable="True" Margin="3,0" VerticalContentAlignment="Center" FontSize="11"
+                              SelectionChanged="OnFontBox" LostFocus="OnFontBox" KeyUp="OnFontBox">
+                        <ComboBoxItem>12</ComboBoxItem><ComboBoxItem>14</ComboBoxItem><ComboBoxItem>16</ComboBoxItem>
+                        <ComboBoxItem>20</ComboBoxItem><ComboBoxItem>24</ComboBoxItem><ComboBoxItem>28</ComboBoxItem>
+                        <ComboBoxItem>32</ComboBoxItem><ComboBoxItem>40</ComboBoxItem><ComboBoxItem>48</ComboBoxItem>
+                        <ComboBoxItem>60</ComboBoxItem><ComboBoxItem>72</ComboBoxItem>
+                    </ComboBox>
+                    <Button x:Name="BtnFPlus" Content="+" Style="{StaticResource TbBtn}" Click="OnFontStep" Tag="2"/>
+                    <Border Width="1" Background="#33FFFFFF" Margin="8,3"/>
+                    <TextBlock Text="정렬" Foreground="#AAB0B8" FontSize="10" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                    <Button x:Name="BtnAL" Style="{StaticResource TbBtn}" Click="OnAlign" Tag="Left"  ToolTip="왼쪽 정렬"/>
+                    <Button x:Name="BtnAC" Style="{StaticResource TbBtn}" Click="OnAlign" Tag="Center" ToolTip="가운데 정렬"/>
+                    <Button x:Name="BtnAR" Style="{StaticResource TbBtn}" Click="OnAlign" Tag="Right" ToolTip="오른쪽 정렬"/>
+                </StackPanel>
+              </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
     </Border>
 </Window>
