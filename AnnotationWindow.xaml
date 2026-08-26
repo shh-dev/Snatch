@@ -42,6 +42,7 @@
                     <Button x:Name="BtnArrow" Content="↗ 화살표"        Style="{StaticResource TbBtn}" Click="OnTool" Tag="arrow"/>
                     <Button x:Name="BtnRect"  Content="▭ 사각형"        Style="{StaticResource TbBtn}" Click="OnTool" Tag="rect"/>
                     <Button x:Name="BtnEll"   Content="◯ 원"           Style="{StaticResource TbBtn}" Click="OnTool" Tag="ellipse"/>
+                    <Button x:Name="BtnPen"   Content="✏ 펜"           Style="{StaticResource TbBtn}" Click="OnTool" Tag="pen"/>
                     <Button x:Name="BtnHl"    Content="🖍 형광펜"        Style="{StaticResource TbBtn}" Click="OnTool" Tag="hl"/>
                     <Button x:Name="BtnBlur"  Content="🔒 블러"         Style="{StaticResource TbBtn}" Click="OnTool" Tag="blur"/>
                     <Button x:Name="BtnText"  Content="🅰 텍스트"        Style="{StaticResource TbBtn}" Click="OnTool" Tag="text"/>
@@ -60,6 +61,8 @@
                     <Button x:Name="BtnW1" Content="ᐧ 얇게"  Style="{StaticResource TbBtn}" Click="OnWidth" Tag="2"/>
                     <Button x:Name="BtnW2" Content="― 보통"  Style="{StaticResource TbBtn}" Click="OnWidth" Tag="4"/>
                     <Button x:Name="BtnW3" Content="▬ 굵게"  Style="{StaticResource TbBtn}" Click="OnWidth" Tag="7"/>
+                    <Border Width="1" Background="#33FFFFFF" Margin="8,3"/>
+                    <Button x:Name="BtnHatch" Content="▨ 빗금채우기" Style="{StaticResource TbBtn}" Click="OnHatch"/>
                 </StackPanel>
             </StackPanel>
         </Border>

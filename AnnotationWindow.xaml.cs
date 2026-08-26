@@ -27,11 +27,13 @@ public partial class AnnotationWindow : Window
     private const double HlWidth = 16;
     private Canvas? _hlLayer;   // highlighter strokes, multiply-blended over the image
     private BitmapSource _srcBmp = null!;   // full-res source for blur/mosaic
+    private const double Margin = 140;      // 이미지 둘레 여백(마크업 여유)
 
     private Point _start;
     private bool _dragging;
     private Shape? _live;              // shape being dragged
     private Image? _blurLive;          // mosaic being dragged
+    private bool _hatch;               // 사각형/원 빗금 채우기
     private ShapePath? _spotlight;         // single dim overlay, multiple bright holes
     private readonly List<Rect> _holes = new();
     private int _dimTransPct = 15;         // 딤 투명도 % (휠 5%단위, 10~100)
@@ -56,16 +58,26 @@ public partial class AnnotationWindow : Window
         _dispW = Math.Max(1, _origW * scale);
         _dispH = Math.Max(1, _origH * scale);
 
-        Surface.Width = _dispW; Surface.Height = _dispH;
-        BaseImage.Source = bmp; BaseImage.Width = _dispW; BaseImage.Height = _dispH;
+        // 이미지 둘레 여백(여기에도 마크업 가능)
+        Surface.Width = _dispW + 2 * Margin; Surface.Height = _dispH + 2 * Margin;
 
-        // 형광펜 전용 레이어 (이미지 바로 위) — 멀티플라이 블렌드
+        // 배경(여백 포함) — index 0
+        var bg = new Rectangle { Width = Surface.Width, Height = Surface.Height, Fill = new SolidColorBrush(Color.FromRgb(0x2B, 0x2B, 0x33)) };
+        Canvas.SetLeft(bg, 0); Canvas.SetTop(bg, 0);
+        Surface.Children.Insert(0, bg);
+
+        // 이미지 — 여백만큼 오프셋
+        BaseImage.Source = bmp; BaseImage.Width = _dispW; BaseImage.Height = _dispH;
+        Canvas.SetLeft(BaseImage, Margin); Canvas.SetTop(BaseImage, Margin);
+
+        // 형광펜 전용 레이어 (이미지 위) — 멀티플라이 블렌드
         _hlLayer = new Canvas
         {
             Width = _dispW, Height = _dispH, IsHitTestVisible = false,
             Effect = new MultiplyEffect { Bg = new ImageBrush(bmp) { Stretch = Stretch.Fill } },
         };
-        Surface.Children.Insert(1, _hlLayer);
+        Canvas.SetLeft(_hlLayer, Margin); Canvas.SetTop(_hlLayer, Margin);
+        Surface.Children.Add(_hlLayer);
 
         BuildSwatches();
         SelectWidth(3);
@@ -101,6 +113,28 @@ public partial class AnnotationWindow : Window
         _color = new SolidColorBrush(col);
         foreach (System.Windows.Controls.Border b in Swatches.Children)
             b.BorderBrush = (b.Tag is Color bc && bc == col) ? Brushes.White : Brushes.Transparent;
+    }
+
+    private void OnHatch(object sender, RoutedEventArgs e)
+    {
+        _hatch = !_hatch;
+        BtnHatch.Background = _hatch
+            ? new SolidColorBrush(Color.FromRgb(0x2D, 0x6C, 0xDF))
+            : new SolidColorBrush(Color.FromRgb(0x2A, 0x2A, 0x33));
+    }
+
+    private Brush HatchBrush()
+    {
+        var pen = new Pen(new SolidColorBrush(_color.Color), 2); pen.Freeze();
+        var gd = new System.Windows.Media.GeometryDrawing { Pen = pen, Geometry = new LineGeometry(new Point(0, 7), new Point(7, 0)) };
+        var b = new DrawingBrush(gd)
+        {
+            TileMode = TileMode.Tile,
+            ViewportUnits = BrushMappingMode.Absolute, Viewport = new Rect(0, 0, 7, 7),
+            ViewboxUnits = BrushMappingMode.Absolute, Viewbox = new Rect(0, 0, 7, 7),
+        };
+        b.Freeze();
+        return b;
     }
 
     private void OnWidth(object sender, RoutedEventArgs e)
@@ -139,7 +173,7 @@ public partial class AnnotationWindow : Window
         _tool = t;
         var active = new SolidColorBrush(Color.FromRgb(0x2D, 0x6C, 0xDF));
         var normal = new SolidColorBrush(Color.FromRgb(0x2A, 0x2A, 0x33));
-        foreach (var (btn, tag) in new[] { (BtnSpot, "spot"), (BtnArrow, "arrow"), (BtnRect, "rect"), (BtnEll, "ellipse"), (BtnHl, "hl"), (BtnBlur, "blur"), (BtnText, "text"), (BtnNum, "num") })
+        foreach (var (btn, tag) in new[] { (BtnSpot, "spot"), (BtnArrow, "arrow"), (BtnRect, "rect"), (BtnEll, "ellipse"), (BtnPen, "pen"), (BtnHl, "hl"), (BtnBlur, "blur"), (BtnText, "text"), (BtnNum, "num") })
             btn.Background = tag == t ? active : normal;
     }
 
@@ -183,13 +217,25 @@ public partial class AnnotationWindow : Window
         }
         if (_tool == "rect")
         {
-            _live = new Rectangle { Stroke = Accent, StrokeThickness = Stroke, Fill = Brushes.Transparent };
+            _live = new Rectangle { Stroke = Accent, StrokeThickness = Stroke, Fill = _hatch ? HatchBrush() : Brushes.Transparent };
             AddShape(_live, _start);
         }
         else if (_tool == "ellipse")
         {
-            _live = new Ellipse { Stroke = Accent, StrokeThickness = Stroke, Fill = Brushes.Transparent };
+            _live = new Ellipse { Stroke = Accent, StrokeThickness = Stroke, Fill = _hatch ? HatchBrush() : Brushes.Transparent };
             AddShape(_live, _start);
+        }
+        else if (_tool == "pen")
+        {
+            var pl = new Polyline
+            {
+                Stroke = Accent, StrokeThickness = Stroke,
+                StrokeLineJoin = PenLineJoin.Round, StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round,
+            };
+            pl.Points.Add(_start);
+            _live = pl;
+            Surface.Children.Add(pl);
+            _added.Add(pl);
         }
         else if (_tool == "hl")
         {
@@ -198,7 +244,7 @@ public partial class AnnotationWindow : Window
                 Stroke = HlBrush, StrokeThickness = HlWidth,
                 StrokeLineJoin = PenLineJoin.Miter, StrokeStartLineCap = PenLineCap.Flat, StrokeEndLineCap = PenLineCap.Flat,
             };
-            pl.Points.Add(_start);
+            pl.Points.Add(new Point(_start.X - Margin, _start.Y - Margin));   // 레이어 로컬좌표
             _live = pl;
             _hlLayer?.Children.Add(pl);
             _added.Add(pl);
@@ -238,8 +284,16 @@ public partial class AnnotationWindow : Window
         else if (_tool == "hl" && _live is Polyline pl)
         {
             bool shift = (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Shift) != 0;
-            if (shift) pl.Points = new PointCollection { _start, new Point(p.X, _start.Y) };   // 수평 직선(Y 고정)
-            else pl.Points.Add(p);                                                              // 자유곡선
+            var s = new Point(_start.X - Margin, _start.Y - Margin);
+            var q = new Point(p.X - Margin, p.Y - Margin);
+            if (shift) pl.Points = new PointCollection { s, new Point(q.X, s.Y) };   // 수평 직선(Y 고정)
+            else pl.Points.Add(q);                                                    // 자유곡선
+        }
+        else if (_tool == "pen" && _live is Polyline pp)
+        {
+            bool shift = (System.Windows.Input.Keyboard.Modifiers & System.Windows.Input.ModifierKeys.Shift) != 0;
+            if (shift) pp.Points = new PointCollection { _start, p };   // 직선
+            else pp.Points.Add(p);                                      // 자유곡선
         }
         else if (_tool == "arrow" && _live is Line ln)
         {
@@ -283,6 +337,10 @@ public partial class AnnotationWindow : Window
         {
             _hlLayer?.Children.Remove(pl); _added.Remove(pl);
         }
+        else if (_tool == "pen" && _live is Polyline pp && (pp.Points.Count < 2 || Dist(_start, p) < 3))
+        {
+            Surface.Children.Remove(pp); _added.Remove(pp);
+        }
         else if (_tool == "spot" && _holes.Count > 0)
         {
             var h = _holes[^1];
@@ -304,7 +362,7 @@ public partial class AnnotationWindow : Window
         try
         {
             double kx = _origW / _dispW, ky = _origH / _dispH;
-            int sx = (int)(r.X * kx), sy = (int)(r.Y * ky);
+            int sx = (int)((r.X - Margin) * kx), sy = (int)((r.Y - Margin) * ky);
             int sw = (int)(r.Width * kx), sh = (int)(r.Height * ky);
             sw = Math.Min(sw, _origW - sx); sh = Math.Min(sh, _origH - sy);
             if (sw < 2 || sh < 2 || sx < 0 || sy < 0) return null;
@@ -369,7 +427,7 @@ public partial class AnnotationWindow : Window
         return lum > 140 ? Brushes.Black : Brushes.White;
     }
 
-    private Point Clamp(Point p) => new(Math.Clamp(p.X, 0, _dispW), Math.Clamp(p.Y, 0, _dispH));
+    private Point Clamp(Point p) => new(Math.Clamp(p.X, 0, Surface.Width), Math.Clamp(p.Y, 0, Surface.Height));
     private static double Dist(Point a, Point b) => Math.Sqrt((a.X - b.X) * (a.X - b.X) + (a.Y - b.Y) * (a.Y - b.Y));
 
     private void AddShape(Shape s, Point at)
@@ -411,7 +469,8 @@ public partial class AnnotationWindow : Window
     {
         if (_spotlight != null) return;
         _spotlight = new ShapePath { Fill = new SolidColorBrush(Color.FromArgb(DimAlpha, 0, 0, 0)), IsHitTestVisible = false };
-        Surface.Children.Insert(1, _spotlight);   // 이미지 위, 다른 주석 아래
+        int idx = _hlLayer != null ? Surface.Children.IndexOf(_hlLayer) + 1 : 1;
+        Surface.Children.Insert(idx, _spotlight);   // 이미지/형광펜 위, 다른 주석 아래
     }
 
     private void RebuildSpotlight()
@@ -419,7 +478,7 @@ public partial class AnnotationWindow : Window
         if (_spotlight == null) return;
         if (_holes.Count == 0) { Surface.Children.Remove(_spotlight); _spotlight = null; return; }
         var grp = new GeometryGroup { FillRule = FillRule.EvenOdd };
-        grp.Children.Add(new RectangleGeometry(new Rect(0, 0, _dispW, _dispH)));
+        grp.Children.Add(new RectangleGeometry(new Rect(0, 0, Surface.Width, Surface.Height)));
         foreach (var h in _holes) grp.Children.Add(new RectangleGeometry(h, 6, 6));
         _spotlight.Data = grp;
     }
@@ -432,18 +491,20 @@ public partial class AnnotationWindow : Window
         _added.RemoveAt(_added.Count - 1);
         if (last is ArrowGroup.MarkerElement m) { Surface.Children.Remove(m.Line); Surface.Children.Remove(m.Head); }
         else if (last is SpotMarker) { if (_holes.Count > 0) _holes.RemoveAt(_holes.Count - 1); RebuildSpotlight(); }
-        else if (last is Polyline) _hlLayer?.Children.Remove(last);   // 형광펜
+        else if (last is Polyline) { _hlLayer?.Children.Remove(last); Surface.Children.Remove(last); }   // 형광펜(레이어)·펜(서피스)
         else Surface.Children.Remove(last);
     }
 
     private RenderTargetBitmap RenderComposite()
     {
-        // draw the display surface scaled up to original resolution
+        // 전체 서피스(이미지+여백)를 원본 해상도 비율로 렌더
+        double k = _origW / _dispW;
+        int outW = (int)Math.Round(Surface.Width * k), outH = (int)Math.Round(Surface.Height * k);
         var vb = new VisualBrush(Surface) { Stretch = Stretch.Fill };
         var dv = new DrawingVisual();
         using (var dc = dv.RenderOpen())
-            dc.DrawRectangle(vb, null, new Rect(0, 0, _origW, _origH));
-        var rtb = new RenderTargetBitmap(_origW, _origH, 96, 96, PixelFormats.Pbgra32);
+            dc.DrawRectangle(vb, null, new Rect(0, 0, outW, outH));
+        var rtb = new RenderTargetBitmap(outW, outH, 96, 96, PixelFormats.Pbgra32);
         rtb.Render(dv);
         return rtb;
     }
