@@ -273,9 +273,25 @@ public partial class AnnotationWindow : Window
         BtnOpts.Background = show ? new SolidColorBrush(Color.FromRgb(0x2D, 0x6C, 0xDF)) : new SolidColorBrush(Color.FromRgb(0x2A, 0x2A, 0x33));
     }
 
-    private void OnTitleDrag(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    // 툴바를 캔버스 안에서 이동(빈 영역 잡고 드래그) — 아래쪽도 표기 가능
+    private bool _tbDrag;
+    private Point _tbStart; private double _tbOx, _tbOy;
+    private void OnToolbarDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
-        if (e.ButtonState == System.Windows.Input.MouseButtonState.Pressed) try { DragMove(); } catch { }
+        if (e.OriginalSource is Button || e.OriginalSource is Image) return;   // 버튼 클릭은 통과
+        _tbDrag = true; _tbStart = e.GetPosition(this); _tbOx = TbTx.X; _tbOy = TbTx.Y;
+        ToolBar.CaptureMouse();
+    }
+    private void OnToolbarMove(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (!_tbDrag) return;
+        var p = e.GetPosition(this);
+        TbTx.X = _tbOx + (p.X - _tbStart.X);
+        TbTx.Y = _tbOy + (p.Y - _tbStart.Y);
+    }
+    private void OnToolbarUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        _tbDrag = false; ToolBar.ReleaseMouseCapture();
     }
 
     // ---- mouse ----
@@ -757,6 +773,24 @@ public partial class AnnotationWindow : Window
         else if (ctrl && e.Key == System.Windows.Input.Key.Z) OnUndo(this, new RoutedEventArgs());
         else if (ctrl && e.Key == System.Windows.Input.Key.C) OnCopy(this, new RoutedEventArgs());
         else if (ctrl && e.Key == System.Windows.Input.Key.S) OnSave(this, new RoutedEventArgs());
+        else if (!ctrl && e.OriginalSource is not TextBox)   // 숫자 단축키 (텍스트 입력 중엔 무시)
+        {
+            var t = e.Key switch
+            {
+                System.Windows.Input.Key.D1 or System.Windows.Input.Key.NumPad1 => "spot",
+                System.Windows.Input.Key.D2 or System.Windows.Input.Key.NumPad2 => "arrow",
+                System.Windows.Input.Key.D3 or System.Windows.Input.Key.NumPad3 => "rect",
+                System.Windows.Input.Key.D4 or System.Windows.Input.Key.NumPad4 => "ellipse",
+                System.Windows.Input.Key.D5 or System.Windows.Input.Key.NumPad5 => "pen",
+                System.Windows.Input.Key.D6 or System.Windows.Input.Key.NumPad6 => "hl",
+                System.Windows.Input.Key.D7 or System.Windows.Input.Key.NumPad7 => "blur",
+                System.Windows.Input.Key.D8 or System.Windows.Input.Key.NumPad8 => "text",
+                System.Windows.Input.Key.D9 or System.Windows.Input.Key.NumPad9 => "callout",
+                System.Windows.Input.Key.D0 or System.Windows.Input.Key.NumPad0 => "num",
+                _ => null,
+            };
+            if (t != null) SelectTool(t);
+        }
     }
 }
 
