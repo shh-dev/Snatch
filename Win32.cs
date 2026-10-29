@@ -9,6 +9,21 @@ namespace Snatch;
 
 public static class Win32
 {
+    // ---- 캡처에서 빼기: 커서 옆 칩/미리보기/토스트가 스크린샷에 찍히지 않게 ----
+    [DllImport("user32.dll")] private static extern bool SetWindowDisplayAffinity(IntPtr h, uint affinity);
+    private const uint WDA_EXCLUDEFROMCAPTURE = 0x11;   // Win10 2004+
+
+    /// <summary>이 창을 모든 화면 캡처(우리 캡처 포함)에서 제외. 핸들이 생긴 뒤 적용되도록 SourceInitialized에 건다.</summary>
+    public static void ExcludeFromCapture(Window w)
+    {
+        void Apply()
+        {
+            try { SetWindowDisplayAffinity(new WindowInteropHelper(w).Handle, WDA_EXCLUDEFROMCAPTURE); } catch { }
+        }
+        if (new WindowInteropHelper(w).Handle != IntPtr.Zero) Apply();
+        else w.SourceInitialized += (_, _) => Apply();
+    }
+
     // ---- Foreground (active) window bounds ----
     [StructLayout(LayoutKind.Sequential)] private struct RECT { public int Left, Top, Right, Bottom; }
     [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();

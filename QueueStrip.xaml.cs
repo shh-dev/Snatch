@@ -24,10 +24,10 @@ public partial class QueueStrip : Window
     private static readonly IntPtr HWND_TOPMOST = new(-1);
     private const uint SWP_NOSIZE = 0x1, SWP_NOACTIVATE = 0x10, SWP_NOZORDER = 0x4;
     private const int Tile = 30;   // chip size — small like a color chip
-    private const int VK_CONTROL = 0x11, VK_V = 0x56, VK_E = 0x45;
+    private const int VK_CONTROL = 0x11, VK_SHIFT = 0x10, VK_V = 0x56, VK_E = 0x45;
     private bool _eDown;
 
-    /// <summary>E 키(칩 떠있을 때) → 편집 열기.</summary>
+    /// <summary>Ctrl+Shift+E(칩 떠있을 때) → 편집 열기.</summary>
     public Action? OnEdit { get; set; }
 
     private readonly DispatcherTimer _previewTimer;   // auto-hides the newest-item preview box (short)
@@ -40,7 +40,7 @@ public partial class QueueStrip : Window
 
     public QueueStrip()
     {
-        InitializeComponent();
+        InitializeComponent();  Win32.ExcludeFromCapture(this);   // 스크린샷에 안 찍히게
         _previewTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(PreviewMs) };
         _previewTimer.Tick += (_, _) =>
         {
@@ -211,9 +211,10 @@ public partial class QueueStrip : Window
         // 붙여넣기(Ctrl+V) 하면 사라짐
         if (ctrl && (GetAsyncKeyState(VK_V) & 0x8000) != 0) { CloseStrip(); return; }
 
-        // Ctrl+E → 편집 열기
+        // Ctrl+Shift+E → 편집 열기 (Ctrl+E는 Aside 등 브라우저 단축키와 겹침)
         bool e = (GetAsyncKeyState(VK_E) & 0x8000) != 0;
-        if (e && ctrl && !_eDown) { _eDown = true; OnEdit?.Invoke(); return; }
+        bool shift = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
+        if (e && ctrl && shift && !_eDown) { _eDown = true; OnEdit?.Invoke(); return; }
         if (!e) _eDown = false;
 
         MoveToCursor();

@@ -15,7 +15,7 @@ public partial class App : Application
     private HistoryWindow? _historyWin;
     private IntPtr _prevFocus;                            // app to paste back into
     private readonly List<ClipContent> _queue = new();   // clipboard history, newest at index 0
-    private const int MaxQueue = 5;
+    private const int MaxQueue = 10;
     private Settings _settings = new();
     private SettingsWindow? _settingsWin;
     private Hotkeys? _hotkeys;
@@ -47,7 +47,10 @@ public partial class App : Application
         SetupHotkeys();
         SetupClipboard();
         BuildTray();
+        _expander = new TextExpander(() => _settings.TextExpand ? _settings.Snippets : [], a => Dispatcher.BeginInvoke(a));
     }
+
+    private TextExpander? _expander;
 
     private void SetupCrashLog()
     {
@@ -73,7 +76,7 @@ public partial class App : Application
         if (_hotkeys == null) return; // shares the hidden host window's handle
         _clip = new ClipboardWatcher(_hotkeys.Handle);
         _clip.Changed += OnClipboardChanged;
-        // Ctrl+V·E 감지는 QueueStrip 자체 타이머에서 처리 (GetAsyncKeyState)
+        // Ctrl+V·Ctrl+Shift+E 감지는 QueueStrip 자체 타이머에서 처리 (GetAsyncKeyState)
     }
 
     private void EditLast()
@@ -207,6 +210,8 @@ public partial class App : Application
     private string _histHk = "(없음)";
     private string _plainHk = "(없음)";
     private string _ocrHk = "(없음)";
+    private string _scrollHk = "(없음)";
+    private string _pinHk = "(없음)";
 
     private void SetupHotkeys()
     {
@@ -235,6 +240,7 @@ public partial class App : Application
         _regionHk = TryRegister(regionCands, CaptureRegion) ?? "(없음)";
         var histCands = new (uint vk, bool c, bool s, bool a, string label)[]
         {
+            (0x56, false, false, true, "Alt+V"),   // 기본: 누르기 쉬운 Alt+V
             (0x48, true, false, true, "Ctrl+Alt+H"),
             (0x48, true, true, false, "Ctrl+Shift+H"),
             (0x43, true, false, true, "Ctrl+Alt+C"),
@@ -251,15 +257,29 @@ public partial class App : Application
             (0x54, true, true, false, "Ctrl+Shift+T"),
         };
 
+        var scrollCands = new (uint vk, bool c, bool s, bool a, string label)[]
+        {
+            (0x32, true, true, false, "Ctrl+Shift+2"),
+            (0x32, true, false, true, "Ctrl+Alt+2"),
+            (0x52, true, true, true,  "Ctrl+Shift+Alt+R"),
+        };
+
         _fullHk = TryRegister(fullCands, CaptureFull) ?? "(없음)";
-        _histHk = TryRegister(histCands, ToggleHistory) ?? "(없음)";
+        _scrollHk = TryRegister(scrollCands, CaptureScroll) ?? "(없음)";
+        _histHk = TryRegister(histCands, QuickHistory) ?? "(없음)";
         _plainHk = TryRegister(plainCands, PlainPaste) ?? "(없음)";
         _ocrHk = TryRegister(ocrCands, OcrLast) ?? "(없음)";
+        var pinCands = new (uint vk, bool c, bool s, bool a, string label)[]
+        {
+            (0x50, true, true, false, "Ctrl+Shift+P"),
+            (0x50, true, false, true, "Ctrl+Alt+P"),
+        };
+        _pinHk = TryRegister(pinCands, PinLast) ?? "(없음)";
         try
         {
             var dir = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Snatch");
             System.IO.Directory.CreateDirectory(dir);
-            System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "hotkeys.log"), $"region={_regionHk}\nfull={_fullHk}\nhistory={_histHk}\nplainpaste={_plainHk}\nocr={_ocrHk}\n");
+            System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "hotkeys.log"), $"region={_regionHk}\nfull={_fullHk}\nhistory={_histHk}\nplainpaste={_plainHk}\nocr={_ocrHk}\nscroll={_scrollHk}\npin={_pinHk}\n");
         }
         catch { }
     }
@@ -319,6 +339,46 @@ public partial class App : Application
         finally { _capturing = false; }
     }
 
+    /// <summary>스크롤 캡처: 영역(또는 Space로 창) 선택 → 자동으로 휠을 굴리며 찍어서 긴 이미지 한 장으로 저장. Esc = 거기까지 저장.</summary>
+    private async void CaptureScroll()
+    {
+        if (_capturing) return;
+        _capturing = true;
+        try
+        {
+            var vs = WinForms.SystemInformation.VirtualScreen;
+            var windows = Win32.VisibleTopWindows();
+            Int32Rect? sel;
+            using (var frozen = Capture.GrabRegion(vs.X, vs.Y, vs.Width, vs.Height))
+            {
+                var overlay = new CaptureOverlay();
+                overlay.SetFrozen(Capture.ToBitmapSource(frozen));
+                overlay.SetWindows(windows);
+                overlay.SetHint("스크롤 캡처: 스크롤할 영역을 드래그 (Space = 창 선택) · 진행 중 Esc = 거기까지 저장");
+                sel = overlay.ShowDialog() == true ? overlay.Result : null;
+            }
+            if (sel is not { } r || r.Width < 20 || r.Height < 60) return;
+
+            await System.Threading.Tasks.Task.Delay(150);   // 오버레이가 화면에서 사라질 때까지
+            if (_tray != null) _tray.Text = "Snatch — 스크롤 캡처 중 (Esc = 중지)";
+            var badge = new ScrollBadge(r.X, r.Y, r.Width, r.Height);   // 화면에 "스크롤 캡처 중" 표시
+            badge.Show();
+            var frame = ScrollBadge.ShowFrame(r.X, r.Y, r.Width, r.Height);   // 드래그한 영역 테두리
+            System.Drawing.Bitmap bmp;
+            try { bmp = await ScrollCapture.RunAsync(r.X, r.Y, r.Width, r.Height, (n, px) => badge.SetProgress(n, px)); }
+            finally { badge.Close(); frame.Close(); }
+            using var _bmp = bmp;
+            var stamp = DateTime.Now.ToString("yyyy-MM-dd HHmmss");
+            SaveAndNotify(Capture.SaveBitmap(bmp, _settings, stamp));
+        }
+        catch (Exception ex) { LogEx("ScrollCapture", ex); }
+        finally
+        {
+            _capturing = false;
+            RestoreTrayText();
+        }
+    }
+
     private void PickColor(string hex)
     {
         try
@@ -342,6 +402,20 @@ public partial class App : Application
     [System.Runtime.InteropServices.DllImport("user32.dll")]
     private static extern bool SetForegroundWindow(IntPtr h);
 
+    private QuickPasteWindow? _quick;
+    private void QuickHistory()
+    {
+        if (_quick != null) { try { _quick.Close(); } catch { } _quick = null; return; }
+        if (_history.Items.Count == 0) return;
+        _prevFocus = GetForegroundWindow();
+        var top = _history.Items.Take(10).ToList();
+        var w = new QuickPasteWindow(top, PasteHistory, PasteHistoryMany);
+        w.SetHotkeyLabel(_histHk);
+        w.Closed += (_, _) => { if (ReferenceEquals(_quick, w)) _quick = null; };
+        _quick = w;
+        w.Show(); w.Activate();
+    }
+
     private void ToggleHistory()
     {
         if (_historyWin != null) { try { _historyWin.Close(); } catch { } _historyWin = null; return; }
@@ -358,6 +432,8 @@ public partial class App : Application
         var clip = ClipHistory.ToClip(item);
         try { _historyWin?.Close(); } catch { }
         _historyWin = null;
+        try { _quick?.Close(); } catch { }
+        _quick = null;
 
         try { _clip?.Suppress(); SetClipboard(clip); }
         catch { /* clipboard may be locked */ }
@@ -367,6 +443,39 @@ public partial class App : Application
         var t = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(140) };
         t.Tick += (_, _) => { t.Stop(); SendCtrlV(); };
         t.Start();
+    }
+
+    /// <summary>여러 개를 고른 순서대로 하나씩 붙여넣기 (클립보드에 넣고 → Ctrl+V → 대상 앱이 읽을 시간 기다림 → 다음).</summary>
+    private bool _multiPasting;
+    private async void PasteHistoryMany(List<HistoryItem> items)
+    {
+        if (_multiPasting || items.Count == 0) return;
+        _multiPasting = true;
+        try { _historyWin?.Close(); } catch { }
+        _historyWin = null;
+        try { _quick?.Close(); } catch { }
+        _quick = null;
+        try
+        {
+            if (_prevFocus != IntPtr.Zero) SetForegroundWindow(_prevFocus);
+            await System.Threading.Tasks.Task.Delay(140);
+            foreach (var item in items)
+            {
+                var clip = ClipHistory.ToClip(item);
+                bool ok = false;
+                for (int i = 0; i < 8 && !ok; i++)
+                {
+                    try { _clip?.Suppress(); SetClipboard(clip); ok = true; }
+                    catch { await System.Threading.Tasks.Task.Delay(50); }   // 클립보드 잠깐 잠김 → 재시도
+                }
+                if (!ok) continue;
+                await System.Threading.Tasks.Task.Delay(clip.IsImage ? 120 : 60);   // 클립보드 정착
+                SendCtrlV();
+                await System.Threading.Tasks.Task.Delay(clip.IsImage ? 450 : 220);  // 대상 앱이 읽을 시간 (이미지는 넉넉히)
+            }
+        }
+        catch (Exception ex) { LogEx("MultiPaste", ex); }
+        finally { _multiPasting = false; }
     }
 
     private void ClearQueue()
@@ -523,6 +632,39 @@ public partial class App : Application
             EnqueueClip(new ClipContent { Image = thumb, ImagePath = path });
         }
         catch { }
+
+        // 캡처 직후 미니 창 (오른쪽 아래 썸네일: 끌어서 놓기·편집·복사·핀)
+        if (_settings.ShowMiniCard) MiniCardWindow.Present(path, OpenEditor, PinFile);
+    }
+
+    private void OpenEditor(string path)
+    {
+        if (!System.IO.File.Exists(path)) return;
+        _queueStrip?.CloseStrip(); _queueStrip = null;   // 편집기 열면 칩 치움
+        try { var w = new AnnotationWindow(path, _settings); w.Show(); w.Activate(); }
+        catch (Exception ex) { Debug.WriteLine(ex); }
+    }
+
+    /// <summary>파일을 화면에 고정(핀).</summary>
+    private void PinFile(string path)
+    {
+        try
+        {
+            var bi = new System.Windows.Media.Imaging.BitmapImage();
+            bi.BeginInit();
+            bi.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+            bi.UriSource = new Uri(path);
+            bi.EndInit();
+            bi.Freeze();
+            var p = new PinWindow(bi, path, _settings, OpenEditor);
+            p.Show(); p.Activate();
+        }
+        catch (Exception ex) { LogEx("Pin", ex); }
+    }
+
+    private void PinLast()
+    {
+        if (_lastShotPath is { } p && System.IO.File.Exists(p)) PinFile(p);
     }
 
     private void BuildTray()
@@ -534,23 +676,43 @@ public partial class App : Application
             Text = "Snatch",
         };
 
+        // 단축키는 오른쪽 끝 정렬 칸에 표시, 없으면 비움
+        WinForms.ToolStripMenuItem Item(string text, string? hk, Action act) =>
+            new(text, null, (_, _) => Dispatcher.Invoke(act)) { ShortcutKeyDisplayString = hk is null or "(없음)" ? null : hk };
+        WinForms.ToolStripMenuItem Sub(string text, params WinForms.ToolStripItem[] items)
+        {
+            var m = new WinForms.ToolStripMenuItem(text);
+            m.DropDownItems.AddRange(items);
+            return m;
+        }
+
         var menu = new WinForms.ContextMenuStrip();
-        menu.Items.Add($"영역 캡처  ({_regionHk})", null, (_, _) => Dispatcher.Invoke(CaptureRegion));
-        menu.Items.Add($"전체 캡처  ({_fullHk})", null, (_, _) => Dispatcher.Invoke(CaptureFull));
-        menu.Items.Add($"클립보드 히스토리  ({_histHk})", null, (_, _) => Dispatcher.Invoke(ToggleHistory));
-        menu.Items.Add("마지막 캡처 편집", null, (_, _) => Dispatcher.Invoke(EditLast));
-        menu.Items.Add($"마지막 캡처 OCR  ({_ocrHk})", null, (_, _) => Dispatcher.Invoke(OcrLast));
-        menu.Items.Add($"서식없이 붙여넣기  ({_plainHk})", null, (_, _) => Dispatcher.Invoke(PlainPaste));
-        menu.Items.Add("큐 비우기", null, (_, _) => Dispatcher.Invoke(ClearQueue));
+        menu.Items.Add(Item("영역 캡처", _regionHk, CaptureRegion));
+        menu.Items.Add(Item("전체 캡처", _fullHk, CaptureFull));
+        menu.Items.Add(Item("스크롤 캡처", _scrollHk, CaptureScroll));
+        menu.Items.Add(Sub("마지막 캡처",
+            Item("편집", "Ctrl+Shift+E", EditLast),
+            Item("화면에 고정", _pinHk, PinLast),
+            Item("글자 읽기 (OCR)", _ocrHk, OcrLast)));
+        menu.Items.Add(Sub("고정한 캡처",
+            Item("클릭 통과 해제", null, PinWindow.ClearClickThroughAll),
+            Item("모두 닫기", null, PinWindow.CloseAll)));
         menu.Items.Add(new WinForms.ToolStripSeparator());
-        var chipItem = new WinForms.ToolStripMenuItem("미니 썸네일") { Checked = _settings.ShowChips, CheckOnClick = true };
+        menu.Items.Add(Item("빠른 붙여넣기", _histHk, QuickHistory));
+        menu.Items.Add(Item("서식 없이 붙여넣기", _plainHk, PlainPaste));
+        menu.Items.Add(Item("클립보드 기록 보기", null, ToggleHistory));
+        menu.Items.Add(Item("대기 중인 복사 비우기", null, ClearQueue));
+        menu.Items.Add(new WinForms.ToolStripSeparator());
+        var opts = new WinForms.ToolStripMenuItem("옵션");
+        menu.Items.Add(opts);
+        var chipItem = new WinForms.ToolStripMenuItem("커서 옆 미니 썸네일") { Checked = _settings.ShowChips, CheckOnClick = true };
         chipItem.CheckedChanged += (_, _) =>
         {
             _settings.ShowChips = chipItem.Checked;
             _settings.Save();
             Dispatcher.Invoke(SyncQueueUi);
         };
-        menu.Items.Add(chipItem);
+        opts.DropDownItems.Add(chipItem);
 
         var prevItem = new WinForms.ToolStripMenuItem("복사 미리보기") { Checked = _settings.ShowPreview, CheckOnClick = true };
         prevItem.CheckedChanged += (_, _) =>
@@ -559,7 +721,11 @@ public partial class App : Application
             _settings.Save();
             Dispatcher.Invoke(SyncQueueUi);
         };
-        menu.Items.Add(prevItem);
+        opts.DropDownItems.Add(prevItem);
+
+        var miniItem = new WinForms.ToolStripMenuItem("캡처 후 미니 창") { Checked = _settings.ShowMiniCard, CheckOnClick = true };
+        miniItem.CheckedChanged += (_, _) => { _settings.ShowMiniCard = miniItem.Checked; _settings.Save(); };
+        opts.DropDownItems.Add(miniItem);
 
         var keepItem = new WinForms.ToolStripMenuItem("붙여넣을 때까지 유지") { Checked = _settings.KeepUntilPaste, CheckOnClick = true };
         keepItem.CheckedChanged += (_, _) =>
@@ -568,16 +734,17 @@ public partial class App : Application
             _settings.Save();
             Dispatcher.Invoke(SyncQueueUi);
         };
-        menu.Items.Add(keepItem);
+        opts.DropDownItems.Add(keepItem);
+        opts.DropDownItems.Add(new WinForms.ToolStripSeparator());
 
         var autoItem = new WinForms.ToolStripMenuItem("Windows 시작 시 자동실행") { Checked = AutoStart.IsEnabled(), CheckOnClick = true };
         autoItem.CheckedChanged += (_, _) => AutoStart.Set(autoItem.Checked);
-        menu.Items.Add(autoItem);
+        opts.DropDownItems.Add(autoItem);
 
-        var ytItem = new WinForms.ToolStripMenuItem("유튜브 H264 다운로드") { Checked = _settings.YoutubeDownload, CheckOnClick = true };
+        var ytItem = new WinForms.ToolStripMenuItem("유튜브 링크 자동 다운로드") { Checked = _settings.YoutubeDownload, CheckOnClick = true };
         ytItem.CheckedChanged += (_, _) => { _settings.YoutubeDownload = ytItem.Checked; _settings.Save(); };
-        menu.Items.Add(ytItem);
-        menu.Items.Add("설정", null, (_, _) => OpenSettings());
+        opts.DropDownItems.Add(ytItem);
+        menu.Items.Add("설정…", null, (_, _) => OpenSettings());
         menu.Items.Add("다운로드 폴더 열기", null, (_, _) =>
         {
             try { Process.Start("explorer.exe", _settings.ResolvedDownloads); } catch { }
@@ -646,6 +813,7 @@ public partial class App : Application
     {
         _queueStrip?.CloseStrip();
         _clip?.Dispose();
+        _expander?.Dispose();
         _hotkeys?.Dispose();
         _watcher?.Dispose();
         if (_tray != null) { _tray.Visible = false; _tray.Dispose(); }

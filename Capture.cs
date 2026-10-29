@@ -101,6 +101,20 @@ public static class Capture
         catch { return null; }
     }
 
+    /// <summary>Save an already-built bitmap (e.g. stitched scroll capture) as PNG, return path (or null).</summary>
+    public static string? SaveBitmap(Bitmap bmp, Settings s, string stamp)
+    {
+        try
+        {
+            var dir = ScreenshotFolder(s);
+            Directory.CreateDirectory(dir);
+            var path = Unique(Path.Combine(dir, $"스크린샷 {stamp}.png"));
+            bmp.Save(path, ImageFormat.Png);
+            return path;
+        }
+        catch { return null; }
+    }
+
     public static string ScreenshotFolder(Settings s)
     {
         if (!string.IsNullOrWhiteSpace(s.ScreenshotFolder)) return s.ScreenshotFolder!;

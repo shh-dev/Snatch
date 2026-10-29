@@ -14,6 +14,7 @@ public partial class CaptureOverlay : Window
     [DllImport("user32.dll")] private static extern bool GetCursorPos(out POINT p);
 
     private Point _start;
+    private Point _lastDiu;   // 직전 프레임 커서 (스페이스 이동량 계산)
     private bool _dragging;
     private double _scaleX = 1.0, _scaleY = 1.0;
 
@@ -39,6 +40,9 @@ public partial class CaptureOverlay : Window
 
     /// <summary>Window rects (physical px, z-order top-first) for Space window-pick mode.</summary>
     public void SetWindows(List<(int x, int y, int w, int h)> wins) => _windows = wins;
+
+    /// <summary>Show a guide line at the top of the overlay (e.g. scroll-capture instructions).</summary>
+    public void SetHint(string text) { HintText.Text = text; HintBadge.Visibility = Visibility.Visible; }
 
     public CaptureOverlay()
     {
@@ -91,7 +95,14 @@ public partial class CaptureOverlay : Window
         double diuX = p.X / _scaleX - Left;   // OS physical cursor → Root DIU
         double diuY = p.Y / _scaleY - Top;
 
-        if (_dragging) Place(_start, new Point(diuX, diuY));
+        var cur = new Point(diuX, diuY);
+        if (_dragging)
+        {
+            if (Keyboard.IsKeyDown(Key.Space)) _start += cur - _lastDiu;   // 스페이스 꾹 = 시작점까지 같이 이동 (영역 통째로 옮기기, 맥 방식)
+            else cur = SnapDiu(cur);                                        // 창·화면 경계에 자석처럼 붙기
+            Place(_start, cur);
+        }
+        _lastDiu = cur;
         UpdateLoupe(diuX, diuY);
     }
 
@@ -160,7 +171,8 @@ public partial class CaptureOverlay : Window
             if (_hoverWin is { } w) { Result = w; DialogResult = true; }
             return;
         }
-        _start = e.GetPosition(Root);
+        _start = SnapDiu(e.GetPosition(Root));
+        _lastDiu = e.GetPosition(Root);
         _dragging = true;
         Sel.Visibility = Visibility.Visible;
         SizeBadge.Visibility = Visibility.Visible;
@@ -220,7 +232,7 @@ public partial class CaptureOverlay : Window
     {
         if (!_dragging) return;
         _dragging = false;
-        var end = e.GetPosition(Root);
+        var end = Keyboard.IsKeyDown(Key.Space) ? e.GetPosition(Root) : SnapDiu(e.GetPosition(Root));
 
         double x = Math.Min(_start.X, end.X);
         double y = Math.Min(_start.Y, end.Y);
@@ -255,6 +267,34 @@ public partial class CaptureOverlay : Window
         DialogResult = true; // closes
     }
 
+    // ---- 경계 자석: 창 가장자리·모니터 가장자리 8px 안이면 거기에 딱 붙임 (Alt 누르면 끔) ----
+    private const double SnapPx = 8;
+
+    private Point SnapDiu(Point diu)
+    {
+        if (Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt)) return diu;
+        var edges = new List<(int x, int y, int w, int h)>(_windows);
+        foreach (var s in System.Windows.Forms.Screen.AllScreens) edges.Add((s.Bounds.X, s.Bounds.Y, s.Bounds.Width, s.Bounds.Height));
+        var p = SnapPhysical((Left + diu.X) * _scaleX, (Top + diu.Y) * _scaleY, edges, SnapPx);
+        return new Point(p.X / _scaleX - Left, p.Y / _scaleY - Top);
+    }
+
+    /// <summary>점(물리 px)을 가장 가까운 사각형 세로변/가로변에 붙임 — 그 변 길이 범위 안에 있을 때만.</summary>
+    public static Point SnapPhysical(double px, double py, IEnumerable<(int x, int y, int w, int h)> rects, double th)
+    {
+        double bx = px, by = py, dx = th + 0.001, dy = th + 0.001;
+        foreach (var r in rects)
+        {
+            if (py >= r.y - th && py <= r.y + r.h + th)
+                foreach (var ex in new double[] { r.x, r.x + r.w })
+                    if (Math.Abs(px - ex) < dx) { dx = Math.Abs(px - ex); bx = ex; }
+            if (px >= r.x - th && px <= r.x + r.w + th)
+                foreach (var ey in new double[] { r.y, r.y + r.h })
+                    if (Math.Abs(py - ey) < dy) { dy = Math.Abs(py - ey); by = ey; }
+        }
+        return new Point(bx, by);
+    }
+
     private void Place(Point a, Point b)
     {
         double x = Math.Min(a.X, b.X), y = Math.Min(a.Y, b.Y);
@@ -280,6 +320,6 @@ public partial class CaptureOverlay : Window
     private void OnKey(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Escape) { Result = null; DialogResult = false; }
-        else if (e.Key == Key.Space) { ToggleWinMode(); e.Handled = true; }
+        else if (e.Key == Key.Space) { if (!_dragging) ToggleWinMode(); e.Handled = true; }   // 드래그 중 스페이스는 영역 이동용
     }
 }

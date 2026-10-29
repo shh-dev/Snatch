@@ -36,5 +36,11 @@
             </StackPanel>
         </Border>
     </Canvas>
+    <Border x:Name="HintBadge" Visibility="Collapsed" IsHitTestVisible="False"
+            HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,24,0,0"
+            Background="#E6101418" CornerRadius="6" Padding="12,6"
+            BorderBrush="#FF3DA9FC" BorderThickness="1">
+        <TextBlock x:Name="HintText" Foreground="#FF9FE0FF" FontSize="13" FontWeight="SemiBold"/>
+    </Border>
   </Grid>
 </Window>

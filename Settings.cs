@@ -9,8 +9,16 @@ public class Favorite
     public string Path { get; set; } = "";
 }
 
+public class Snippet
+{
+    public string Trigger { get; set; } = "";
+    public string Text { get; set; } = "";
+}
+
 public class Settings
 {
+    public bool TextExpand { get; set; } = true;          // 단축어 자동 바꾸기
+    public List<Snippet> Snippets { get; set; } = new();
     public string? DownloadsFolder { get; set; }
     public List<Favorite> Favorites { get; set; } = new();
     public int AutoHideSeconds { get; set; } = 12;
@@ -31,6 +39,10 @@ public class Settings
     public string ResolvedYoutubeDir =>
         !string.IsNullOrWhiteSpace(YoutubeDir) && Directory.Exists(YoutubeDir) ? YoutubeDir! : ResolvedDownloads;
     public bool CaptureCursor { get; set; } = true;      // 캡처에 마우스 포인터 그려넣기(활성창/전체)
+    public string? AnnotColor { get; set; }              // 편집기 마지막 색 (#RRGGBB)
+    public bool PenAutoShape { get; set; } = true;       // 펜으로 그린 원·화살표·직선 자동 정리
+    public bool ShowMiniCard { get; set; } = true;       // 캡처 후 오른쪽 아래 미니 창
+    public string DefaultTool { get; set; } = "arrow";  // 편집창 열 때 바로 선택될 도구
 
     private static string Dir =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Snatch");

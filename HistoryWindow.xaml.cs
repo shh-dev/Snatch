@@ -16,6 +16,12 @@ public partial class HistoryWindow : Window
         InitializeComponent();
         _history = history;
         _onPick = onPick;
+        // 가상화 리스트: 보이는 행만 MakeRow 호출 (500개도 즉시 열림)
+        var dt = new DataTemplate();
+        var f = new FrameworkElementFactory(typeof(ContentControl));
+        f.SetBinding(ContentControl.ContentProperty, new System.Windows.Data.Binding { Converter = new RowConverter(MakeRow) });
+        dt.VisualTree = f;
+        RowsList.ItemTemplate = dt;
         Refresh();
         Loaded += (_, _) => SearchBox.Focus();
     }
@@ -41,9 +47,7 @@ public partial class HistoryWindow : Window
             .OrderByDescending(i => i.Pinned)   // 고정 먼저 (그 안에서 최신순 유지)
             .ToList();
 
-        Rows.Children.Clear();
-        for (int i = 0; i < list.Count; i++)
-            Rows.Children.Add(MakeRow(list[i], i + 1));
+        RowsList.ItemsSource = list;
 
         // 필터 버튼 하이라이트
         var act = new SolidColorBrush(Color.FromRgb(0x2D, 0x6C, 0xDF));
@@ -53,24 +57,12 @@ public partial class HistoryWindow : Window
         CountText.Text = $"{list.Count} / {_history.Items.Count}";
     }
 
-    private Border MakeRow(HistoryItem item, int no)
+    private Border MakeRow(HistoryItem item)
     {
         var grid = new Grid();
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });   // no
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });   // thumb
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });   // delete
-
-        var noText = new TextBlock
-        {
-            Text = no.ToString("D2"),
-            Foreground = new SolidColorBrush(Color.FromRgb(0x77, 0x7E, 0x88)),
-            FontSize = 10,
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, 8, 0),
-        };
-        Grid.SetColumn(noText, 0);
-        grid.Children.Add(noText);
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });   // actions
 
         var box = new Border
         {
@@ -97,7 +89,7 @@ public partial class HistoryWindow : Window
                 HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center,
             };
         }
-        Grid.SetColumn(box, 1);
+        Grid.SetColumn(box, 0);
         grid.Children.Add(box);
 
         var body = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
@@ -117,7 +109,7 @@ public partial class HistoryWindow : Window
             FontSize = 10,
             Margin = new Thickness(0, 2, 0, 0),
         });
-        Grid.SetColumn(body, 2);
+        Grid.SetColumn(body, 1);
         grid.Children.Add(body);
 
         var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
@@ -138,7 +130,7 @@ public partial class HistoryWindow : Window
         };
         del.Click += (_, _) => { _history.Remove(item); Refresh(); };
         actions.Children.Add(pin); actions.Children.Add(del);
-        Grid.SetColumn(actions, 3);
+        Grid.SetColumn(actions, 2);
         grid.Children.Add(actions);
 
         var row = new Border
@@ -168,4 +160,15 @@ public partial class HistoryWindow : Window
     {
         if (e.Key == Key.Escape) Close();
     }
+}
+
+/// <summary>가상화 ListBox가 보이는 항목만 행 UI로 변환.</summary>
+public class RowConverter : System.Windows.Data.IValueConverter
+{
+    private readonly Func<HistoryItem, System.Windows.UIElement> _make;
+    public RowConverter(Func<HistoryItem, System.Windows.UIElement> make) => _make = make;
+    public object? Convert(object value, Type t, object p, System.Globalization.CultureInfo c)
+        => value is HistoryItem h ? _make(h) : null;
+    public object ConvertBack(object value, Type t, object p, System.Globalization.CultureInfo c)
+        => throw new NotSupportedException();
 }

@@ -21,7 +21,7 @@ public partial class ToastWindow : Window
 
     public ToastWindow(string path, Settings settings)
     {
-        InitializeComponent();
+        InitializeComponent();  Win32.ExcludeFromCapture(this);   // 스크린샷에 안 찍히게
         _path = path;
         _settings = settings;
 

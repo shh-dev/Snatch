@@ -24,6 +24,49 @@ public partial class SettingsWindow : Window
         UpdateSoundText();
         UpdateCapSoundText();
         UpdateShotDirText();
+        ExpandChk.IsChecked = _settings.TextExpand;
+        RefreshSnips();
+    }
+
+    private void RefreshSnips()
+    {
+        SnipList.Items.Clear();
+        foreach (var s in _settings.Snippets)
+            SnipList.Items.Add($"{s.Trigger}  →  {s.Text.Replace("\r\n", " ⏎ ").Replace("\n", " ⏎ ")}");
+    }
+
+    private void OnSnipSelect(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        int i = SnipList.SelectedIndex;
+        if (i < 0 || i >= _settings.Snippets.Count) return;
+        SnipTrigger.Text = _settings.Snippets[i].Trigger;
+        SnipText.Text = _settings.Snippets[i].Text;
+    }
+
+    private void OnSnipSave(object sender, RoutedEventArgs e)
+    {
+        var t = SnipTrigger.Text.Trim().ToLowerInvariant();
+        if (t.Length == 0 || !t.All(char.IsAsciiLetterOrDigit))
+        {
+            MessageBox.Show(this, "단축어는 영문·숫자만 쓸 수 있어요.", "단축어", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        if (SnipText.Text.Length == 0) return;
+        var hit = _settings.Snippets.FirstOrDefault(s => s.Trigger == t);
+        if (hit != null) hit.Text = SnipText.Text;
+        else _settings.Snippets.Add(new Snippet { Trigger = t, Text = SnipText.Text });
+        _settings.Save();
+        RefreshSnips();
+        SnipTrigger.Clear(); SnipText.Clear();
+    }
+
+    private void OnSnipRemove(object sender, RoutedEventArgs e)
+    {
+        int i = SnipList.SelectedIndex;
+        if (i < 0 || i >= _settings.Snippets.Count) return;
+        _settings.Snippets.RemoveAt(i);
+        _settings.Save();
+        RefreshSnips();
     }
 
     private void UpdateShotDirText() => ShotDirText.Text = Capture.ScreenshotFolder(_settings);
@@ -136,6 +179,7 @@ public partial class SettingsWindow : Window
         _settings.CopyToClipboard = ClipChk.IsChecked == true;
         _settings.ToastPosition = PosBox.SelectedValue as string ?? "Right";
         _settings.YoutubeDownload = YtChk.IsChecked == true;
+        _settings.TextExpand = ExpandChk.IsChecked == true;
         _settings.Save();
         Saved?.Invoke();
         MetaFlash();
@@ -143,7 +187,7 @@ public partial class SettingsWindow : Window
 
     private void MetaFlash()
     {
-        Title = "Snatch 설정 — 저장됨";
+        SavedText.Text = "저장됨 ✓";
     }
 
     private void OnCloseBtn(object sender, RoutedEventArgs e) => Close();

@@ -1,0 +1,18 @@
+<Window x:Class="Snatch.QuickPasteWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ShowInTaskbar="False" Topmost="True" ResizeMode="NoResize"
+        FontFamily="Segoe UI Variable Text, Segoe UI, Malgun Gothic"
+        SizeToContent="WidthAndHeight" KeyDown="OnKey" Deactivated="OnDeactivated">
+    <Border Background="#F51C1C1F" CornerRadius="12" Padding="8"
+            BorderBrush="#26FFFFFF" BorderThickness="1">
+        <StackPanel>
+            <TextBlock x:Name="Header" Text="붙여넣기 — 숫자 키" Foreground="#A6FFFFFF" FontSize="10"
+                       FontWeight="SemiBold" Margin="4,0,0,6"/>
+            <StackPanel x:Name="Rows" Width="320"/>
+            <TextBlock x:Name="Hint" Text="번호 여러 개 = 선택 · A 전체 · Enter 차례로 붙여넣기" Foreground="#8CFFFFFF" FontSize="10"
+                       Margin="4,6,0,0" TextWrapping="Wrap" Width="316"/>
+        </StackPanel>
+    </Border>
+</Window>
