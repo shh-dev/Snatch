@@ -27,7 +27,7 @@ public partial class QueueStrip : Window
     private const int VK_CONTROL = 0x11, VK_V = 0x56, VK_E = 0x45;
     private bool _eDown;
 
-    /// <summary>E 키(칩 떠있을 때) → 편집 열기.</summary>
+    /// <summary>Ctrl+E(칩 떠있을 때) → 편집 열기.</summary>
     public Action? OnEdit { get; set; }
 
     private readonly DispatcherTimer _previewTimer;   // auto-hides the newest-item preview box (short)
@@ -109,16 +109,21 @@ public partial class QueueStrip : Window
         }
     }
 
+    private static Brush HexBrush(string hex)
+    {
+        try { return new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex)); }
+        catch { return Brushes.Gray; }
+    }
+
+    private static bool IsDown(int vk) => (GetAsyncKeyState(vk) & 0x8000) != 0;
+
     /// <summary>Larger preview of the newest item, shown under the chip row.</summary>
     private UIElement MakePreview(ClipContent c)
     {
         if (c.IsColor && c.ColorHex is { } hex)
         {
             var row = new StackPanel { Orientation = Orientation.Horizontal };
-            var sw = new Border { Width = 26, Height = 26, CornerRadius = new CornerRadius(4) };
-            try { sw.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex)); }
-            catch { sw.Background = Brushes.Gray; }
-            row.Children.Add(sw);
+            row.Children.Add(new Border { Width = 26, Height = 26, CornerRadius = new CornerRadius(4), Background = HexBrush(hex) });
             row.Children.Add(new TextBlock
             {
                 Text = hex, Foreground = Brushes.White, FontSize = 13, FontFamily = new FontFamily("Consolas"),
@@ -150,10 +155,7 @@ public partial class QueueStrip : Window
 
         if (c.IsColor && c.ColorHex is { } hex)
         {
-            var sw = new Border { CornerRadius = new CornerRadius(3) };
-            try { sw.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex)); }
-            catch { sw.Background = Brushes.Gray; }
-            content.Children.Add(sw);
+            content.Children.Add(new Border { CornerRadius = new CornerRadius(3), Background = HexBrush(hex) });
         }
         else if (c.IsImage && c.Image is { } img)
         {
@@ -206,13 +208,13 @@ public partial class QueueStrip : Window
 
     private void OnFrame(object? sender, EventArgs ev)
     {
-        bool ctrl = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
+        bool ctrl = IsDown(VK_CONTROL);
 
         // 붙여넣기(Ctrl+V) 하면 사라짐
-        if (ctrl && (GetAsyncKeyState(VK_V) & 0x8000) != 0) { CloseStrip(); return; }
+        if (ctrl && IsDown(VK_V)) { CloseStrip(); return; }
 
         // Ctrl+E → 편집 열기
-        bool e = (GetAsyncKeyState(VK_E) & 0x8000) != 0;
+        bool e = IsDown(VK_E);
         if (e && ctrl && !_eDown) { _eDown = true; OnEdit?.Invoke(); return; }
         if (!e) _eDown = false;
 
