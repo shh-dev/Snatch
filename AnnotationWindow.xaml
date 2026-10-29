@@ -39,6 +39,14 @@ KeyDown="OnKey" PreviewKeyDown="OnPreviewKey" PreviewMouseWheel="OnPreviewWheel"
             </Setter>
         </Style>
         <!-- 신호등 버튼 (빨강=닫기, 노랑=최소화, 초록=맞춤/100%) — 올리면 기호 표시 -->
+        <Style x:Key="TbIconBtn" TargetType="Button" BasedOn="{StaticResource TbBtn}">
+            <Setter Property="Width" Value="46"/>
+            <Setter Property="Height" Value="46"/>
+        </Style>
+        <Style x:Key="TbIco" TargetType="Image">
+            <Setter Property="Width" Value="18"/>
+            <Setter Property="Height" Value="18"/>
+        </Style>
         <Style x:Key="LightBtn" TargetType="Button">
             <Setter Property="Width" Value="13"/>
             <Setter Property="Height" Value="13"/>
@@ -175,22 +183,22 @@ KeyDown="OnKey" PreviewKeyDown="OnPreviewKey" PreviewMouseWheel="OnPreviewWheel"
                     <Border.Effect><DropShadowEffect BlurRadius="22" ShadowDepth="5" Direction="270" Opacity="0.45" Color="Black"/></Border.Effect>
                     <StackPanel>
                         <StackPanel Orientation="Horizontal">
-                            <Button x:Name="BtnSel" Width="46" Height="46" ToolTip="선택 (V) — 클릭해서 옮기기·크기 조절·Del 삭제·색 바꾸기" Style="{StaticResource TbBtn}" Click="OnTool" Tag="select"><StackPanel><Path Data="M3,1 L3,15 L6.8,11.4 L9.6,17.2 L12,16 L9.3,10.4 L14.2,10.2 Z" Fill="#E8E8EC" Width="18" Height="18" Stretch="Uniform"/><TextBlock Text="V 선택" Style="{StaticResource Lbl}"/></StackPanel></Button>
-                            <Button x:Name="BtnSpot"  Width="46" Height="46" ToolTip="스포트라이트 (1)" Style="{StaticResource TbBtn}" Click="OnTool" Tag="spot"><StackPanel><Image Source="/icons/spot.png" Width="18" Height="18"/><TextBlock Text="1 스포트" Style="{StaticResource Lbl}"/></StackPanel></Button>
-                            <Button x:Name="BtnArrow" Width="46" Height="46" ToolTip="화살표 (2)" Style="{StaticResource TbBtn}" Click="OnTool" Tag="arrow"><StackPanel><Image Source="/icons/arrow.png" Width="18" Height="18"/><TextBlock Text="2 화살표" Style="{StaticResource Lbl}"/></StackPanel></Button>
-                            <Button x:Name="BtnRect"  Width="46" Height="46" ToolTip="사각형 (3)" Style="{StaticResource TbBtn}" Click="OnTool" Tag="rect"><StackPanel><Image Source="/icons/rect.png" Width="18" Height="18"/><TextBlock Text="3 사각형" Style="{StaticResource Lbl}"/></StackPanel></Button>
-                            <Button x:Name="BtnEll"   Width="46" Height="46" ToolTip="원 (4)" Style="{StaticResource TbBtn}" Click="OnTool" Tag="ellipse"><StackPanel><Image Source="/icons/ellipse.png" Width="18" Height="18"/><TextBlock Text="4 원" Style="{StaticResource Lbl}"/></StackPanel></Button>
-                            <Button x:Name="BtnPen"   Width="46" Height="46" ToolTip="펜 (5)" Style="{StaticResource TbBtn}" Click="OnTool" Tag="pen"><StackPanel><Image Source="/icons/pen.png" Width="18" Height="18"/><TextBlock Text="5 펜" Style="{StaticResource Lbl}"/></StackPanel></Button>
-                            <Button x:Name="BtnHl"    Width="46" Height="46" ToolTip="형광펜 (6)" Style="{StaticResource TbBtn}" Click="OnTool" Tag="hl"><StackPanel><Image Source="/icons/hl.png" Width="18" Height="18"/><TextBlock Text="6 형광펜" Style="{StaticResource Lbl}"/></StackPanel></Button>
-                            <Button x:Name="BtnBlur"  Width="46" Height="46" ToolTip="블러 (7)" Style="{StaticResource TbBtn}" Click="OnTool" Tag="blur"><StackPanel><Image Source="/icons/blur.png" Width="18" Height="18"/><TextBlock Text="7 블러" Style="{StaticResource Lbl}"/></StackPanel></Button>
-                            <Button x:Name="BtnText"  Width="46" Height="46" ToolTip="텍스트 (8)" Style="{StaticResource TbBtn}" Click="OnTool" Tag="text"><StackPanel><Image Source="/icons/text.png" Width="18" Height="18"/><TextBlock Text="8 텍스트" Style="{StaticResource Lbl}"/></StackPanel></Button>
-                            <Button x:Name="BtnCallout" Width="46" Height="46" ToolTip="콜아웃 (9)" Style="{StaticResource TbBtn}" Click="OnTool" Tag="callout"><StackPanel><Image Source="/icons/callout.png" Width="18" Height="18"/><TextBlock Text="9 콜아웃" Style="{StaticResource Lbl}"/></StackPanel></Button>
-                            <Button x:Name="BtnNum"   Width="46" Height="46" ToolTip="넘버 (0)" Style="{StaticResource TbBtn}" Click="OnTool" Tag="num"><StackPanel><Image Source="/icons/num.png" Width="18" Height="18"/><TextBlock Text="0 넘버" Style="{StaticResource Lbl}"/></StackPanel></Button>
+                            <Button x:Name="BtnSel" ToolTip="선택 (V) — 클릭해서 옮기기·크기 조절·Del 삭제·색 바꾸기" Style="{StaticResource TbIconBtn}" Click="OnTool" Tag="select"><StackPanel><Path Data="M3,1 L3,15 L6.8,11.4 L9.6,17.2 L12,16 L9.3,10.4 L14.2,10.2 Z" Fill="#E8E8EC" Width="18" Height="18" Stretch="Uniform"/><TextBlock Text="V 선택" Style="{StaticResource Lbl}"/></StackPanel></Button>
+                            <Button x:Name="BtnSpot"  ToolTip="스포트라이트 (1)" Style="{StaticResource TbIconBtn}" Click="OnTool" Tag="spot"><StackPanel><Image Source="/icons/spot.png" Style="{StaticResource TbIco}"/><TextBlock Text="1 스포트" Style="{StaticResource Lbl}"/></StackPanel></Button>
+                            <Button x:Name="BtnArrow" ToolTip="화살표 (2)" Style="{StaticResource TbIconBtn}" Click="OnTool" Tag="arrow"><StackPanel><Image Source="/icons/arrow.png" Style="{StaticResource TbIco}"/><TextBlock Text="2 화살표" Style="{StaticResource Lbl}"/></StackPanel></Button>
+                            <Button x:Name="BtnRect"  ToolTip="사각형 (3)" Style="{StaticResource TbIconBtn}" Click="OnTool" Tag="rect"><StackPanel><Image Source="/icons/rect.png" Style="{StaticResource TbIco}"/><TextBlock Text="3 사각형" Style="{StaticResource Lbl}"/></StackPanel></Button>
+                            <Button x:Name="BtnEll"   ToolTip="원 (4)" Style="{StaticResource TbIconBtn}" Click="OnTool" Tag="ellipse"><StackPanel><Image Source="/icons/ellipse.png" Style="{StaticResource TbIco}"/><TextBlock Text="4 원" Style="{StaticResource Lbl}"/></StackPanel></Button>
+                            <Button x:Name="BtnPen"   ToolTip="펜 (5)" Style="{StaticResource TbIconBtn}" Click="OnTool" Tag="pen"><StackPanel><Image Source="/icons/pen.png" Style="{StaticResource TbIco}"/><TextBlock Text="5 펜" Style="{StaticResource Lbl}"/></StackPanel></Button>
+                            <Button x:Name="BtnHl"    ToolTip="형광펜 (6)" Style="{StaticResource TbIconBtn}" Click="OnTool" Tag="hl"><StackPanel><Image Source="/icons/hl.png" Style="{StaticResource TbIco}"/><TextBlock Text="6 형광펜" Style="{StaticResource Lbl}"/></StackPanel></Button>
+                            <Button x:Name="BtnBlur"  ToolTip="블러 (7)" Style="{StaticResource TbIconBtn}" Click="OnTool" Tag="blur"><StackPanel><Image Source="/icons/blur.png" Style="{StaticResource TbIco}"/><TextBlock Text="7 블러" Style="{StaticResource Lbl}"/></StackPanel></Button>
+                            <Button x:Name="BtnText"  ToolTip="텍스트 (8)" Style="{StaticResource TbIconBtn}" Click="OnTool" Tag="text"><StackPanel><Image Source="/icons/text.png" Style="{StaticResource TbIco}"/><TextBlock Text="8 텍스트" Style="{StaticResource Lbl}"/></StackPanel></Button>
+                            <Button x:Name="BtnCallout" ToolTip="콜아웃 (9)" Style="{StaticResource TbIconBtn}" Click="OnTool" Tag="callout"><StackPanel><Image Source="/icons/callout.png" Style="{StaticResource TbIco}"/><TextBlock Text="9 콜아웃" Style="{StaticResource Lbl}"/></StackPanel></Button>
+                            <Button x:Name="BtnNum"   ToolTip="넘버 (0)" Style="{StaticResource TbIconBtn}" Click="OnTool" Tag="num"><StackPanel><Image Source="/icons/num.png" Style="{StaticResource TbIco}"/><TextBlock Text="0 넘버" Style="{StaticResource Lbl}"/></StackPanel></Button>
 
-                            <Button x:Name="BtnCrop" Width="46" Height="46" ToolTip="자르기 (C) — 드래그 후 Enter·더블클릭" Style="{StaticResource TbBtn}" Click="OnTool" Tag="crop"><StackPanel><Path Data="M5,1 L5,13 L17,13 M1,5 L13,5 L13,17" Stroke="#E8E8EC" StrokeThickness="2" Width="18" Height="18" Stretch="Uniform"/><TextBlock Text="C 자르기" Style="{StaticResource Lbl}"/></StackPanel></Button>
+                            <Button x:Name="BtnCrop" ToolTip="자르기 (C) — 드래그 후 Enter·더블클릭" Style="{StaticResource TbIconBtn}" Click="OnTool" Tag="crop"><StackPanel><Path Data="M5,1 L5,13 L17,13 M1,5 L13,5 L13,17" Stroke="#E8E8EC" StrokeThickness="2" Width="18" Height="18" Stretch="Uniform"/><TextBlock Text="C 자르기" Style="{StaticResource Lbl}"/></StackPanel></Button>
                             <Border Style="{StaticResource Sep}"/>
                             <!-- 색상: 현재 색 동그라미, 누르면 팔레트 -->
-                            <Button x:Name="BtnColor" Width="46" Height="46" ToolTip="색상" Style="{StaticResource TbBtn}" Click="OnColorBtn">
+                            <Button x:Name="BtnColor" ToolTip="색상" Style="{StaticResource TbIconBtn}" Click="OnColorBtn">
                                 <StackPanel>
                                     <Ellipse x:Name="ColorDot" Width="18" Height="18" Stroke="#D9FFFFFF" StrokeThickness="2" Fill="#FF3B30"/>
                                     <TextBlock Text="색상" Style="{StaticResource Lbl}"/>
@@ -207,12 +215,12 @@ KeyDown="OnKey" PreviewKeyDown="OnPreviewKey" PreviewMouseWheel="OnPreviewWheel"
                                 </Border>
                             </Popup>
                             <Border Style="{StaticResource Sep}"/>
-                            <Button Width="46" Height="46" ToolTip="실행취소 (Ctrl+Z)" Style="{StaticResource TbBtn}" Click="OnUndo"><StackPanel><Image Source="/icons/undo.png" Width="18" Height="18"/><TextBlock Text="취소" Style="{StaticResource Lbl}"/></StackPanel></Button>
-                            <Button Width="46" Height="46" ToolTip="다시 실행 (Ctrl+Shift+Z / Ctrl+Y)" Style="{StaticResource TbBtn}" Click="OnRedo"><StackPanel><Image Source="/icons/undo.png" Width="18" Height="18" RenderTransformOrigin="0.5,0.5"><Image.RenderTransform><ScaleTransform ScaleX="-1"/></Image.RenderTransform></Image><TextBlock Text="다시" Style="{StaticResource Lbl}"/></StackPanel></Button>
-                            <Button Width="46" Height="46" ToolTip="복사 (Ctrl+C)" Style="{StaticResource TbBtn}" Click="OnCopy"><StackPanel><Image Source="/icons/copy.png" Width="18" Height="18"/><TextBlock Text="복사" Style="{StaticResource Lbl}"/></StackPanel></Button>
-                            <Button Width="46" Height="46" ToolTip="저장 (Ctrl+S)" Style="{StaticResource TbBtn}" Click="OnSave"><StackPanel><Image Source="/icons/save.png" Width="18" Height="18"/><TextBlock Text="저장" Style="{StaticResource Lbl}"/></StackPanel></Button>
-                            <Button Width="46" Height="46" ToolTip="화면에 고정(핀) — 항상 위에 떠 있는 창으로" Style="{StaticResource TbBtn}" Click="OnPin"><StackPanel><Path Data="M6,1 L12,1 L11,7 L14,10 L9.6,10 L9,17 L8.4,10 L4,10 L7,7 Z" Fill="#FF6B6B" Width="18" Height="18" Stretch="Uniform"/><TextBlock Text="핀" Style="{StaticResource Lbl}"/></StackPanel></Button>
-                            <Button Width="46" Height="46" ToolTip="닫기 (Esc)" Style="{StaticResource TbBtn}" Click="OnClose"><StackPanel><Image Source="/icons/close.png" Width="18" Height="18"/><TextBlock Text="닫기" Style="{StaticResource Lbl}"/></StackPanel></Button>
+                            <Button ToolTip="실행취소 (Ctrl+Z)" Style="{StaticResource TbIconBtn}" Click="OnUndo"><StackPanel><Image Source="/icons/undo.png" Style="{StaticResource TbIco}"/><TextBlock Text="취소" Style="{StaticResource Lbl}"/></StackPanel></Button>
+                            <Button ToolTip="다시 실행 (Ctrl+Shift+Z / Ctrl+Y)" Style="{StaticResource TbIconBtn}" Click="OnRedo"><StackPanel><Image Source="/icons/undo.png" Style="{StaticResource TbIco}" RenderTransformOrigin="0.5,0.5"><Image.RenderTransform><ScaleTransform ScaleX="-1"/></Image.RenderTransform></Image><TextBlock Text="다시" Style="{StaticResource Lbl}"/></StackPanel></Button>
+                            <Button ToolTip="복사 (Ctrl+C)" Style="{StaticResource TbIconBtn}" Click="OnCopy"><StackPanel><Image Source="/icons/copy.png" Style="{StaticResource TbIco}"/><TextBlock Text="복사" Style="{StaticResource Lbl}"/></StackPanel></Button>
+                            <Button ToolTip="저장 (Ctrl+S)" Style="{StaticResource TbIconBtn}" Click="OnSave"><StackPanel><Image Source="/icons/save.png" Style="{StaticResource TbIco}"/><TextBlock Text="저장" Style="{StaticResource Lbl}"/></StackPanel></Button>
+                            <Button ToolTip="화면에 고정(핀) — 항상 위에 떠 있는 창으로" Style="{StaticResource TbIconBtn}" Click="OnPin"><StackPanel><Path Data="M6,1 L12,1 L11,7 L14,10 L9.6,10 L9,17 L8.4,10 L4,10 L7,7 Z" Fill="#FF6B6B" Width="18" Height="18" Stretch="Uniform"/><TextBlock Text="핀" Style="{StaticResource Lbl}"/></StackPanel></Button>
+                            <Button ToolTip="닫기 (Esc)" Style="{StaticResource TbIconBtn}" Click="OnClose"><StackPanel><Image Source="/icons/close.png" Style="{StaticResource TbIco}"/><TextBlock Text="닫기" Style="{StaticResource Lbl}"/></StackPanel></Button>
                             <Border Style="{StaticResource Sep}"/>
                             <!-- 줌: 세그먼트 컨트롤 -->
                             <Border Background="#14FFFFFF" CornerRadius="9" Height="30" VerticalAlignment="Center" Padding="2,0">
@@ -223,7 +231,7 @@ KeyDown="OnKey" PreviewKeyDown="OnPreviewKey" PreviewMouseWheel="OnPreviewWheel"
                                 </StackPanel>
                             </Border>
                             <Border Style="{StaticResource Sep}"/>
-                            <Button x:Name="BtnOpts" Width="46" Height="46" ToolTip="스타일 옵션" Style="{StaticResource TbBtn}" Click="OnToggleOpts"><StackPanel><Image Source="/icons/opts.png" Width="18" Height="18"/><TextBlock Text="옵션" Style="{StaticResource Lbl}"/></StackPanel></Button>
+                            <Button x:Name="BtnOpts" ToolTip="스타일 옵션" Style="{StaticResource TbIconBtn}" Click="OnToggleOpts"><StackPanel><Image Source="/icons/opts.png" Style="{StaticResource TbIco}"/><TextBlock Text="옵션" Style="{StaticResource Lbl}"/></StackPanel></Button>
                         </StackPanel>
                       <StackPanel x:Name="OptionsPanel" Visibility="Collapsed">
                         <Border Height="1" Background="#14FFFFFF" Margin="2,7,2,0"/>

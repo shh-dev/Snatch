@@ -15,6 +15,16 @@ public class Snippet
     public string Text { get; set; } = "";
 }
 
+/// <summary>편집기 도구별 기본 스타일 (도구 버튼 우클릭 → 편집 으로 저장).</summary>
+public class ToolStyle
+{
+    public string Color { get; set; } = "#FFFF3B30";
+    public double Width { get; set; } = 3;
+    public double Font { get; set; } = 12;
+    public string Align { get; set; } = "Left";
+    public bool Hatch { get; set; }
+}
+
 public class Settings
 {
     public bool TextExpand { get; set; } = true;          // 단축어 자동 바꾸기
@@ -43,6 +53,7 @@ public class Settings
     public bool PenAutoShape { get; set; } = true;       // 펜으로 그린 원·화살표·직선 자동 정리
     public bool ShowMiniCard { get; set; } = true;       // 캡처 후 오른쪽 아래 미니 창
     public string DefaultTool { get; set; } = "arrow";  // 편집창 열 때 바로 선택될 도구
+    public Dictionary<string, ToolStyle> ToolDefaults { get; set; } = new();   // 편집기 도구 태그 → 기본 스타일
 
     private static string Dir =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Snatch");
