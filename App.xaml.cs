@@ -73,7 +73,7 @@ public partial class App : Application
         if (_hotkeys == null) return; // shares the hidden host window's handle
         _clip = new ClipboardWatcher(_hotkeys.Handle);
         _clip.Changed += OnClipboardChanged;
-        // Ctrl+V·E 감지는 QueueStrip 자체 타이머에서 처리 (GetAsyncKeyState)
+        // Ctrl+V·K 감지는 QueueStrip 자체 타이머에서 처리 (GetAsyncKeyState)
     }
 
     private void EditLast()
