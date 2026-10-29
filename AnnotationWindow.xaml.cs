@@ -35,6 +35,7 @@ public partial class AnnotationWindow : Window
     };
     private static readonly string[] DigitTools = { "num", "spot", "arrow", "rect", "ellipse", "pen", "hl", "blur", "text", "callout" };   // 숫자키 0~9
 
+    private Button[] _toolBtns = null!;
     private string _tool = "arrow";
     private SolidColorBrush _color = new(Palette[0]);   // 주석 색 (팔레트로 변경)
     private double _strokeW = 3;                         // 선 굵기
@@ -94,6 +95,9 @@ public partial class AnnotationWindow : Window
         Surface.Children.Add(_hlLayer);
 
         MaxWidth = wa.Width; MaxHeight = wa.Height;   // 넘치면 스크롤
+
+        _toolBtns = new[] { BtnSpot, BtnArrow, BtnRect, BtnEll, BtnPen, BtnHl, BtnBlur, BtnText, BtnCallout, BtnNum };
+        foreach (var b in _toolBtns) AttachDefaultMenu(b);
 
         BuildSwatches();
         SelectWidth(3);
@@ -230,8 +234,34 @@ public partial class AnnotationWindow : Window
     private void SelectTool(string t)
     {
         _tool = t;
-        foreach (var btn in new[] { BtnSpot, BtnArrow, BtnRect, BtnEll, BtnPen, BtnHl, BtnBlur, BtnText, BtnCallout, BtnNum })
-            Mark(btn, (string)btn.Tag == t);
+        foreach (var btn in _toolBtns) Mark(btn, (string)btn.Tag == t);
+        if (_settings.ToolDefaults.TryGetValue(t, out var d)) ApplyStyle(d);
+    }
+
+    /// <summary>도구 버튼 우클릭 → 편집: 지금 스타일을 그 도구의 기본값으로 저장.</summary>
+    private void AttachDefaultMenu(Button btn)
+    {
+        var item = new MenuItem { Header = "편집 — 현재 스타일을 기본값으로" };
+        item.Click += (_, _) =>
+        {
+            _settings.ToolDefaults[(string)btn.Tag] = new ToolStyle
+            {
+                Color = _color.Color.ToString(), Width = _strokeW, Font = _fontSize, Align = _align.ToString(), Hatch = _hatch,
+            };
+            _settings.Save();
+            FlashToast($"{btn.ToolTip} 기본값 저장");
+        };
+        btn.ContextMenu = new ContextMenu { Items = { item } };
+    }
+
+    private void ApplyStyle(ToolStyle d)
+    {
+        try { SelectColor((Color)ColorConverter.ConvertFromString(d.Color)); } catch { }
+        SelectWidth(d.Width);
+        SetFont(d.Font);
+        if (Enum.TryParse<TextAlignment>(d.Align, out var al)) SelectAlign(al);
+        _hatch = d.Hatch;
+        Mark(BtnHatch, _hatch);
     }
 
     private void OnWheel(object sender, MouseWheelEventArgs e)

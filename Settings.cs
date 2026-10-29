@@ -9,6 +9,16 @@ public class Favorite
     public string Path { get; set; } = "";
 }
 
+/// <summary>편집기 도구별 기본 스타일 (도구 버튼 우클릭 → 편집 으로 저장).</summary>
+public class ToolStyle
+{
+    public string Color { get; set; } = "#FFFF3333";
+    public double Width { get; set; } = 3;
+    public double Font { get; set; } = 12;
+    public string Align { get; set; } = "Left";
+    public bool Hatch { get; set; }
+}
+
 public class Settings
 {
     public string? DownloadsFolder { get; set; }
@@ -30,6 +40,7 @@ public class Settings
 
     public string ResolvedYoutubeDir =>
         !string.IsNullOrWhiteSpace(YoutubeDir) && Directory.Exists(YoutubeDir) ? YoutubeDir! : ResolvedDownloads;
+    public Dictionary<string, ToolStyle> ToolDefaults { get; set; } = new();   // 편집기 도구 태그 → 기본 스타일
     public bool CaptureCursor { get; set; } = true;      // 캡처에 마우스 포인터 그려넣기(활성창/전체)
 
     private static string Dir =>
