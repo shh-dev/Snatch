@@ -24,10 +24,10 @@ public partial class QueueStrip : Window
     private static readonly IntPtr HWND_TOPMOST = new(-1);
     private const uint SWP_NOSIZE = 0x1, SWP_NOACTIVATE = 0x10, SWP_NOZORDER = 0x4;
     private const int Tile = 30;   // chip size — small like a color chip
-    private const int VK_CONTROL = 0x11, VK_V = 0x56, VK_P = 0x50;
-    private bool _pDown;
+    private const int VK_CONTROL = 0x11, VK_V = 0x56, VK_TILDE = 0xC0;
+    private bool _tildeDown;
 
-    /// <summary>Ctrl+P(칩 떠있을 때) → 편집 열기.</summary>
+    /// <summary>Ctrl+`(칩 떠있을 때) → 편집 열기.</summary>
     public Action? OnEdit { get; set; }
 
     private readonly DispatcherTimer _previewTimer;   // auto-hides the newest-item preview box (short)
@@ -213,10 +213,10 @@ public partial class QueueStrip : Window
         // 붙여넣기(Ctrl+V) 하면 사라짐
         if (ctrl && IsDown(VK_V)) { CloseStrip(); return; }
 
-        // Ctrl+P → 편집 열기 (2키)
-        bool pk = IsDown(VK_P);
-        if (pk && ctrl && !_pDown) { _pDown = true; OnEdit?.Invoke(); return; }
-        if (!pk) _pDown = false;
+        // Ctrl+` → 편집 열기 (2키)
+        bool tilde = IsDown(VK_TILDE);
+        if (tilde && ctrl && !_tildeDown) { _tildeDown = true; OnEdit?.Invoke(); return; }
+        if (!tilde) _tildeDown = false;
 
         MoveToCursor();
     }

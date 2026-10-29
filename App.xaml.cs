@@ -76,7 +76,7 @@ public partial class App : Application
         if (_hotkeys == null) return; // shares the hidden host window's handle
         _clip = new ClipboardWatcher(_hotkeys.Handle);
         _clip.Changed += OnClipboardChanged;
-        // Ctrl+V·Ctrl+P 감지는 QueueStrip 자체 타이머에서 처리 (GetAsyncKeyState)
+        // Ctrl+V·Ctrl+` 감지는 QueueStrip 자체 타이머에서 처리 (GetAsyncKeyState)
     }
 
     private void EditLast()
@@ -691,7 +691,7 @@ public partial class App : Application
         menu.Items.Add(Item("전체 캡처", _fullHk, CaptureFull));
         menu.Items.Add(Item("스크롤 캡처", _scrollHk, CaptureScroll));
         menu.Items.Add(Sub("마지막 캡처",
-            Item("편집", "Ctrl+P", EditLast),
+            Item("편집", "Ctrl+`", EditLast),
             Item("화면에 고정", _pinHk, PinLast),
             Item("글자 읽기 (OCR)", _ocrHk, OcrLast)));
         menu.Items.Add(Sub("고정한 캡처",
